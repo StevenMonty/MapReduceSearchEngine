@@ -1,0 +1,6 @@
+.DS_Store
+
+**/target/*
+**/credentials/*.json
+.idea
+**/tmp.java
