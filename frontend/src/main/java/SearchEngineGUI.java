@@ -55,7 +55,7 @@ public class SearchEngineGUI {
     private static List<String> selectedFiles;            // TODO clear this on each return to main screen
 
 
-    private static final Object[][] tmpData2 = {                // TODO don't make these literal instantiations
+    private static Object[][] tmpData2 = {                // TODO don't make these literal instantiations
             {"THESE ARE", "FAKE RESULTS"},
             {"histories", new Integer(5000)},
             {"histories", new Integer(3000)},
@@ -63,7 +63,7 @@ public class SearchEngineGUI {
             {"histories", new Integer(1000)},
     };
 
-    private static final Object[][] tmpData = {                // TODO don't make these literal instantiations
+    private static Object[][] tmpData = {                // TODO don't make these literal instantiations
             {0, "THESE ARE", "FAKE RESULTS", new Integer(5)},
             {1, "histories", "1kinghenryiv", new Integer(5)},
             {2, "histories", "1kinghenryiv", new Integer(3)},
@@ -325,8 +325,56 @@ public class SearchEngineGUI {
         }
     }
 
+    private enum JobType {
+        Construct,
+        Search,
+        TopN
+    }
+
+    String outputPath = "OUTPUT_PATH"; //TODO
+
+
+    private static void submitJob(JobType job, List<String> inputFiles, Object query) {
+
+        System.out.println("Submit Job called");
+
+
+        String hadoopCmd = null;
+
+        switch (job) {
+            case Construct:
+                logger.info("Constructing Inverted Indices with the following files:");
+                logger.info(inputFiles.toString());
+                hadoopCmd = "hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>";
+                // TODO call GCP
+                break;
+            case Search:
+                logger.info("Searching for the following term:" + query);
+                hadoopCmd = String.format("hadoop jar ???.jar <INPUT> <OUTPUT>", query);
+
+                // TODO call GCP
+                break;
+            case TopN:
+                logger.info("Searching for the top " + query + " terms");
+                hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
+                break;
+        }
+
+        System.out.println("Mock hadoop job call:");
+        System.out.println(hadoopCmd);
+
+    }
+
+    private static void getJobResults(JobType job) {
+
+        // TODO read GCP storage bucket @ OUTPUT_PATH
+        //  Check job type, construct the table model from the results and render it in the GUI
+
+    }
+
 
     private static void authExplicit(String jsonPath) throws IOException {
+        // TODO move these GCP objects to class attributes
         // You can specify a credential file by providing a path to GoogleCredentials.
         // Otherwise credentials are read from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
         GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
@@ -360,7 +408,7 @@ public class SearchEngineGUI {
         logger.info("GCP Storage Bucket name read from env: " + BUCKET_NAME);
 
         logger.info("Attempting to connect to Google Cloud Platform...");
-        authExplicit(GCP_AUTH_PATH);
+//        authExplicit(GCP_AUTH_PATH);  //TODO comment out to save GCP credits
 
         // Create a TreeMap to store the <Relative Path, Absolute Path> key value pairs to simplify file selection
         srcFiles = new TreeMap<String, Path>();
@@ -456,11 +504,9 @@ public class SearchEngineGUI {
             if (buttonRef == constructButton) {
                 logger.info("Construct Indices Button Clicked, Loading Selected Files...");
 
-                String outPath = "";
-                System.out.println("Mock hadoop job call:");
-                System.out.printf("hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>\n", selectedFiles.toString(), outPath);
 
                 if (!selectedFiles.isEmpty()) {
+                    submitJob(JobType.Construct, selectedFiles, null);
                     CardLayout cl = (CardLayout) (contentCards.getLayout());
                     cl.show(contentCards, MAIN_MENU);
                 }
@@ -483,6 +529,9 @@ public class SearchEngineGUI {
                 }
 
                 term = searchTermInput.getText();
+
+                submitJob(JobType.Search, selectedFiles, term);
+
 
                 logger.info("Showing Search Results for Term: " + term);
 
@@ -585,6 +634,9 @@ public class SearchEngineGUI {
                 }
 
                 logger.info("Showing Results for Top N = " + N + " Terms");
+
+                submitJob(JobType.TopN, selectedFiles, N);
+
 
                 topNSearch.setText(topNSearch.getText().replace("<>", String.valueOf(N)));
 
