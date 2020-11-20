@@ -15,9 +15,6 @@ public class InvertedIndexDriver {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
-//        // TODO set from CLI: hadoop jar ... -D numRecords=N
-//        conf.set("numRecords", "5");
-
         // if less than two paths
         // provided will show error
         if (otherArgs.length < 2)
@@ -43,6 +40,7 @@ public class InvertedIndexDriver {
 
 
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+        FileInputFormat.setInputDirRecursive(job, true);
         FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
