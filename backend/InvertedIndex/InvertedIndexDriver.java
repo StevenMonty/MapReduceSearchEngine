@@ -15,8 +15,8 @@ public class InvertedIndexDriver {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
-        // TODO set from CLI: hadoop jar ... -D numRecords=N
-        conf.set("numRecords", "5");
+//        // TODO set from CLI: hadoop jar ... -D numRecords=N
+//        conf.set("numRecords", "5");
 
         // if less than two paths
         // provided will show error
@@ -26,16 +26,16 @@ public class InvertedIndexDriver {
             System.exit(2);
         }
 
-        Job job = Job.getInstance(conf, "TopN");
+        Job job = Job.getInstance(conf, "InvertedIndex");
         job.setJarByClass(InvertedIndexDriver.class);
 
-        job.setMapperClass(TopNMapper.class);
-        job.setReducerClass(TopNReducer.class);
+        job.setMapperClass(InvertedIndexMapper.class);
+        job.setReducerClass(InvertedIndexReducer.class);
 
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(LongWritable.class);
 
-        job.setOutputKeyClass(LongWritable.class);
+        job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
         // TODO

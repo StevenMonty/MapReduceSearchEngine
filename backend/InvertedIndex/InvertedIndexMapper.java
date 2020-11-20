@@ -6,15 +6,6 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
 import java.util.StringTokenizer;
 
-/**	
- * TODO
- * 
- * Always export the local top N, even if that does not result in the final result being 100% accurate
- * 
- * Separate jar files for Top N and Search Term, but there is a way to reuse the constructed indicies so they are only computed once
- * 
- * @author Steven Montalbano
- */
 
 
 public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
@@ -23,7 +14,6 @@ public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
     private IntWritable one;
     private FileSplit split;
     private Integer docID;
-    private int N;
     private StringTokenizer tokens;
 
     @Override

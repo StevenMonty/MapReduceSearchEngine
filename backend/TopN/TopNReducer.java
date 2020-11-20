@@ -20,7 +20,7 @@ public class TopNReducer extends Reducer<Text, LongWritable, LongWritable, Text>
 
         Configuration config = context.getConfiguration();
 
-        N = Integer.parseInt(config.get("numRecords"));
+        N = Integer.parseInt(config.get("N"));
 
         if (N == 0) {
             System.err.println("Must Specify an N Value");
@@ -60,7 +60,7 @@ public class TopNReducer extends Reducer<Text, LongWritable, LongWritable, Text>
 
         // Iterate through the results TreeMap just created and write the results to the context.
         for (Map.Entry<Long, String> e: swapped.entrySet()) {
-            if (i++ > N)
+            if (++i > N)
                 break;
             context.write(new LongWritable(e.getKey()), new Text(e.getValue()));
         }

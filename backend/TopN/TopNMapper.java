@@ -1,8 +1,8 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Mapper;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
@@ -31,17 +31,18 @@ public class TopNMapper extends Mapper<Object, Text, Text, LongWritable> {
 
         Configuration config = context.getConfiguration();
 
-        N = Integer.parseInt(config.get("numRecords"));
+        N = Integer.parseInt(config.get("N"));
 
         if (N == 0) {
             System.err.println("Must Specify an N Value");
             System.exit(1);
         }
+
     }
 
     @Override
     protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-        String val = value.toString();
+        String val = value.toString().toLowerCase();
 
         // Check if the word has already been seen. If so, increment its existing count, else add count = 1 to the Map
         if (tMap.containsKey(val))
@@ -64,7 +65,7 @@ public class TopNMapper extends Mapper<Object, Text, Text, LongWritable> {
 
         TreeMap<Long, String> swapped = invertMap(tMap);
 
-        int i = 0;
+        int i = 1;
         for (Map.Entry<Long, String> e: swapped.entrySet()) {
             if (i++ > N)
                 break;
