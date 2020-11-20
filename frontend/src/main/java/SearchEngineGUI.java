@@ -338,6 +338,9 @@ public class SearchEngineGUI {
 
         System.out.println("Submit Job called");
 
+        // TODO create new input dir in GCP bucket and move selected files into it
+        // TODO create a results directory in GCP bucket
+
 
         String hadoopCmd = null;
 
@@ -357,6 +360,7 @@ public class SearchEngineGUI {
             case TopN:
                 logger.info("Searching for the top " + query + " terms");
                 hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
+                // TODO call GCP
                 break;
         }
 
@@ -367,8 +371,15 @@ public class SearchEngineGUI {
 
     private static void getJobResults(JobType job) {
 
+        // TODO read results from the local docker container to get the rendering/parsing logic working
+
         // TODO read GCP storage bucket @ OUTPUT_PATH
         //  Check job type, construct the table model from the results and render it in the GUI
+
+
+        // TODO after returning to main menu / closing the program delete the results directory
+
+
 
     }
 

@@ -43,6 +43,8 @@ public class TopNDriver {
         // job.setNumReduceTasks(1);
 
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+        FileInputFormat.setInputDirRecursive(job, true);
+
         FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);

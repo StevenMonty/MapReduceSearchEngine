@@ -4,11 +4,11 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**	
  * TODO
@@ -22,12 +22,21 @@ import java.util.stream.Collectors;
 
 
 public class TopNMapper extends Mapper<Object, Text, Text, LongWritable> {
+
     private static int N;     // TODO read this arg
     private TreeMap<String, Long> tMap; // <WORD, NUM_OCCURRENCES>
+    private Set<String> stopWords;
+    private Pattern regex;
+    private Matcher match;
 
     @Override
     public void setup(Context context) throws IOException, InterruptedException {
+        regex = Pattern.compile("[a-zA-Z]+");
         tMap = new TreeMap<>();
+        stopWords = Stream.of(
+                "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
+                "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
+        ).collect(Collectors.toCollection(HashSet::new));
 
         Configuration config = context.getConfiguration();
 
@@ -42,13 +51,23 @@ public class TopNMapper extends Mapper<Object, Text, Text, LongWritable> {
 
     @Override
     protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-        String val = value.toString().toLowerCase();
+        String line = value.toString();
+        String word = null;
 
-        // Check if the word has already been seen. If so, increment its existing count, else add count = 1 to the Map
-        if (tMap.containsKey(val))
-            tMap.put(val, tMap.get(val)+1);
-        else
-            tMap.put(val, 1L);
+        match = regex.matcher(line);
+
+        while(match.find()) {
+            word = match.group().toLowerCase();
+
+            if (stopWords.contains(word) || word.length() == 1)  // Only add this word if it's not a stop word or
+                continue;                                        // if len is 1 because Shakespeare adds 'd to end of words and that gets chopped off by the regex
+
+            if (tMap.containsKey(word))     // Check if the word has already been seen. If so, increment its existing count,
+                tMap.put(word, tMap.get(word) + 1);
+            else                                // else add count = 1 to the Map
+                tMap.put(word, 1L);
+
+        }
     }
 
     private static TreeMap<Long, String> invertMap(TreeMap<String, Long> map) {
