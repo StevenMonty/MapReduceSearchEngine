@@ -1,4 +1,4 @@
-/**
+ /**
  * SearchEngineGUI.java
  *
  * @author Steven Montalbano
@@ -6,6 +6,7 @@
 
 import com.google.api.gax.paging.Page;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
@@ -17,20 +18,28 @@ import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 
 public class SearchEngineGUI {
 
-    private static final String newLine = "\n";
+    // Environment Var Setup
+    private static String ASSET_PATH;
+    private static String GCP_AUTH_PATH;
+    private static String BUCKET_NAME;
+
     private static final String LOAD_SCREEN = "Let's User Select Which Files to Load";
     private static final String MAIN_MENU = "Let's User Choose to Search a Term or Calculate Top-N Terms";
     private static final String SEARCH_MENU = "Let's User Choose to Search a Term";
@@ -41,8 +50,7 @@ public class SearchEngineGUI {
     private static final String[] topNColNames = {"Term", "Total Occurances"};
     private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
     private static long startTime = 0L;
-    private static String ASSET_PATH = "assets";
-    private static String GCP_AUTH_PATH = "credentials/DHFS_Cluster_Auth.json";
+
     private static TreeMap<String, Path> srcFiles;
     private static List<String> selectedFiles;            // TODO clear this on each return to main screen
 
@@ -66,46 +74,24 @@ public class SearchEngineGUI {
     private static DefaultListModel<String> listModel;        // Model to display the source file selection
     private static TableModel termTableModel;                // Search Term custom, immutable, TableModel instance
     private static TableModel topNTableModel;                // T custom, immutable, TableModel instance
-    private final JFrame window;                                    // Main window that displays all content
-    private final JPanel loadPanel;
-    private final JLabel mainText;
-    private final JButton loadButton;
+
     private final ButtonListener listener;
-    private final JButton constructButton;
-    private final JLabel selectionLabel;
-    private final JLabel titleLabel1;
-    private final JLabel titleLabel2;
-    private final JLabel titleLabel3;
-    private final JButton searchButton;
-    private final JButton topNButton;
-    private final JLabel lblPleaseSelectAn;
-    private final JPanel contentCards;
-    private final JPanel searchPrompt;
-    private final JTextField searchTermInput;
-    private final JTable searchResTable;
-    private final JButton searchEnter;
-    private final JButton backToSearch;
-    private final JScrollPane tableScrollPane;
-    private final JPanel topNPrompt;
-    private final JPanel topNResults;
-    private final JLabel nSearchLabel;
-    private final JTextField nSearchTerm;
-    private final JButton nSearchEnter;
-    private final JButton backToNSearch;
-    private final JLabel topNSearchTime;
-    private final JTable topNTable;
+
+    private final JFrame window;                                    // Main window that displays all content
     private final JList<String> fileList;
-    private final JLabel searchTerm;
-    private final JLabel searchTime;
-    private final JButton backToMenu;
-    private final JScrollPane nResScrollPane;
-    private final JButton backToMenu2;
-    private final JLabel topNSearch;
-    private final JPanel menuPanel;
-    private final JPanel searchResult;
-    private final JLabel searchLabel;
-    private final JScrollPane fileScrollPane;
-    private final JLabel searchText;
+
+    private final JPanel loadPanel, contentCards, searchPrompt, topNPrompt, topNResults, menuPanel, searchResult;
+    private final JTextField searchTermInput, nSearchTerm;
+    private final JScrollPane tableScrollPane, nResScrollPane, fileScrollPane;
+
+    private final JLabel selectionLabel, titleLabel1, titleLabel2, titleLabel3, mainText, lblPleaseSelectAn,
+            nSearchLabel, searchTerm, searchTime, topNSearch, searchLabel, searchText, topNSearchTime;
+
+    private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
+        backToSearch, nSearchEnter, backToNSearch;
+
+    private final JTable searchResTable, topNTable;
+
 
 
     public SearchEngineGUI() {
@@ -114,17 +100,20 @@ public class SearchEngineGUI {
 
         listener = new ButtonListener();        //Custom ActionListener needed for button functionality
 
+        // Main window that renders all of the content
         window = new JFrame("CS 1660 Search Engine");
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setSize(547, 499);
         window.getContentPane().setLayout(null);
         window.setLocationRelativeTo(null);
 
+        // Content cards are used to swap the visable content between the different application screens
         contentCards = new JPanel();
         contentCards.setBounds(6, 6, 534, 466);
         window.getContentPane().add(contentCards);
         contentCards.setLayout(new CardLayout(0, 0));
 
+        // First menu where user specifies which files to submit to the job
         loadPanel = new JPanel();
         contentCards.add(loadPanel, LOAD_SCREEN);
         loadPanel.setLayout(null);
@@ -182,6 +171,7 @@ public class SearchEngineGUI {
         titleLabel3.setBounds(54, 94, 421, 52);
         menuPanel.add(titleLabel3);
 
+        // Operation Menu: Select either Search Term or Top-N job to Hadoop cluster
         searchButton = new JButton("Search for Term");
         searchButton.addActionListener(listener);
         searchButton.setBounds(94, 303, 341, 40);
@@ -198,6 +188,7 @@ public class SearchEngineGUI {
         lblPleaseSelectAn.setBounds(152, 182, 234, 57);
         menuPanel.add(lblPleaseSelectAn);
 
+        // Search Term Menu
         searchPrompt = new JPanel();
         contentCards.add(searchPrompt, SEARCH_MENU);
         searchPrompt.setLayout(null);
@@ -218,6 +209,7 @@ public class SearchEngineGUI {
         searchEnter.addActionListener(listener);
         searchPrompt.add(searchEnter);
 
+        // Top-N Search Menu
         topNPrompt = new JPanel();
         contentCards.add(topNPrompt, TOP_N_MENU);
         topNPrompt.setLayout(null);
@@ -238,6 +230,7 @@ public class SearchEngineGUI {
         nSearchEnter.addActionListener(listener);
         topNPrompt.add(nSearchEnter);
 
+        // Search Term result view
         searchResult = new JPanel();
         contentCards.add(searchResult, SEARCH_RESULT);
         searchResult.setLayout(null);
@@ -261,7 +254,6 @@ public class SearchEngineGUI {
         backToSearch.setBounds(342, 41, 174, 29);
         searchResult.add(backToSearch);
 
-
         backToMenu = new JButton("Return to Menu");
         backToMenu.addActionListener(listener);
         backToMenu.setBounds(342, 83, 174, 29);
@@ -271,11 +263,11 @@ public class SearchEngineGUI {
         tableScrollPane.setBounds(22, 160, 491, 277);
         searchResult.add(tableScrollPane);
 
-
         searchResTable = new JTable(tmpData, searchColNames);
         searchResTable.setModel(termTableModel);
         tableScrollPane.setViewportView(searchResTable);
 
+        // Top-N result view
         topNResults = new JPanel();
         contentCards.add(topNResults, TOP_N_RESULT);
         topNResults.setLayout(null);
@@ -316,8 +308,8 @@ public class SearchEngineGUI {
             logger.info("Performing initial setup...");
             setUp();
         } catch (Exception e) {
-            logger.info("SearchEngineGUI raised an Exception during the init() method. Exiting.\n");
-            e.printStackTrace();
+            logger.severe("SearchEngineGUI raised an Exception during the setup() method:");
+            logger.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
         }
 
@@ -326,8 +318,8 @@ public class SearchEngineGUI {
         try {
             new SearchEngineGUI();
         } catch (Exception e) {
-            logger.info("SearchEngineGUI raised an Exception during execution. Exiting.\n");
-            e.printStackTrace();
+            logger.info("SearchEngineGUI raised an Exception during execution:");
+            logger.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
 
         }
@@ -341,26 +333,22 @@ public class SearchEngineGUI {
                 .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
         Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
 
-        System.out.println("Buckets:");
-        Page<Bucket> buckets = storage.list();
-        for (Bucket bucket : buckets.iterateAll()) {
-            System.out.println(bucket.toString());
-        }
+        Bucket bucket = storage.get(BUCKET_NAME);
+
+        System.out.println(bucket.toString());
+
+        Blob blob = bucket.get("assets/");
+        System.out.println();
+
+//        System.out.println("Buckets:");
+//        Page<Bucket> buckets = storage.list();
+//        for (Bucket bucket : buckets.iterateAll()) {
+//            System.out.println(bucket.toString());
+//        }
     }
 
-    static void authImplicit() {
-//            // If you don't specify credentials when constructing the client, the client library will
-//            // look for credentials via the environment variable GOOGLE_APPLICATION_CREDENTIALS.
-//            Storage storage = StorageOptions.getDefaultInstance().getService();
-//
-//            System.out.println("Buckets:");
-//            Page<Bucket> buckets = storage.list();
-//            for (Bucket bucket : buckets.iterateAll()) {
-//                System.out.println(bucket.toString());
-//            }
-}
 
-    private static void setUp() throws FileNotFoundException {
+    private static void setUp() throws Exception {
 
         ASSET_PATH = System.getenv("ASSET_PATH");
         logger.info("Asset Path read from env: " + ASSET_PATH);
@@ -368,13 +356,11 @@ public class SearchEngineGUI {
         GCP_AUTH_PATH = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
         logger.info("GCP Credential Path read from env: " + GCP_AUTH_PATH);
 
-        try {
-            authExplicit(GCP_AUTH_PATH);
-//            authImplicit();
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
+        BUCKET_NAME = System.getenv("BUCKET_NAME");
+        logger.info("GCP Storage Bucket name read from env: " + BUCKET_NAME);
+
+        logger.info("Attempting to connect to Google Cloud Platform...");
+        authExplicit(GCP_AUTH_PATH);
 
         // Create a TreeMap to store the <Relative Path, Absolute Path> key value pairs to simplify file selection
         srcFiles = new TreeMap<String, Path>();
@@ -452,10 +438,9 @@ public class SearchEngineGUI {
             Component buttonRef = (Component) e.getSource();
 
             if (buttonRef == loadButton) {
-                logger.info("Load files clicked, opening FileChooser...");
+                logger.info("Files selected:");
 
                 selectedFiles = fileList.getSelectedValuesList();
-
 
                 if (selectedFiles.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "Please Select at Least 1 File to Continue.");
@@ -469,7 +454,11 @@ public class SearchEngineGUI {
             }
 
             if (buttonRef == constructButton) {
-                logger.info("Construct Indices Button Clicked...");
+                logger.info("Construct Indices Button Clicked, Loading Selected Files...");
+
+                String outPath = "";
+                System.out.println("Mock hadoop job call:");
+                System.out.printf("hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>\n", selectedFiles.toString(), outPath);
 
                 if (!selectedFiles.isEmpty()) {
                     CardLayout cl = (CardLayout) (contentCards.getLayout());

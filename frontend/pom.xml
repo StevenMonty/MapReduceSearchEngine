@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>FrontEnd</groupId>
-    <artifactId>SearchEngineGUI</artifactId>
+    <artifactId>FrontEnd</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -42,6 +42,11 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-secretmanager</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.google.api.grpc</groupId>
+            <artifactId>proto-google-cloud-dataproc-v1</artifactId>
+            <version>1.1.5</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -61,6 +66,9 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>3.3.0</version>
+<!--                    <configuration>-->
+<!--                        <finalName>SearchEngineGUI-fat</finalName>-->
+<!--                    </configuration>-->
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -71,6 +79,9 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>3.2.0</version>
+                    <configuration>
+                        <finalName>SearchEngineGUI_no_deps</finalName>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -164,6 +175,13 @@
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
+                                <configuration>
+                                    <descriptorRefs>
+                                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                                    </descriptorRefs>
+                                    <finalName>SearchEngineGUI</finalName>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
