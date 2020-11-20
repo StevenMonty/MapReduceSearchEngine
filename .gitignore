@@ -5,3 +5,6 @@
 .idea
 **/tmp.java
 **/*.env
+/frontend/src/main/java/tmpClient.java
+!/.idea/
+!/.idea/workspace.xml
