@@ -18,41 +18,65 @@ import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 public class SearchEngineGUI {
+    private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
 
     // Environment Var Setup
-    private static String ASSET_PATH;
+    private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
     private static String GCP_AUTH_PATH;
     private static String BUCKET_NAME;
-
+    // String names for each Card that is used to change which menu is being displayed
     private static final String LOAD_SCREEN = "Let's User Select Which Files to Load";
     private static final String MAIN_MENU = "Let's User Choose to Search a Term or Calculate Top-N Terms";
     private static final String SEARCH_MENU = "Let's User Choose to Search a Term";
     private static final String SEARCH_RESULT = "Show Search Term Results";
     private static final String TOP_N_MENU = "Let's User Calculate the Top N Frequent Terms";
     private static final String TOP_N_RESULT = "Show Top N Results";
+
     private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurances"};
     private static final String[] topNColNames = {"Term", "Total Occurances"};
-    private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
     private static long startTime = 0L;
 
     private static TreeMap<String, Path> srcFiles;
-    private static List<String> selectedFiles;            // TODO clear this on each return to main screen
+    private static List<String> selectedFiles;              // TODO clear this on each return to main screen
+
+    private static DefaultListModel<String> listModel;      // Model to display the source file selection
+    private static TableModel termTableModel;               // Search Term custom, immutable, TableModel instance
+    private static TableModel topNTableModel;               // TopN custom, immutable, TableModel instance
+
+    private final ButtonListener listener;                  // Custom ActionListener class to handle all button click events
+
+    private final JFrame window;                            // Main window that displays all content
+    private final JList<String> fileList;
+
+    private final JPanel loadPanel, contentCards, searchPrompt, topNPrompt, topNResults, menuPanel, searchResult;
+    private final JTextField searchTermInput, nSearchTerm;
+    private final JScrollPane tableScrollPane, nResScrollPane, fileScrollPane;
+
+    private final JLabel selectionLabel, titleLabel1, titleLabel2, titleLabel3, mainText, lblPleaseSelectAn,
+            nSearchLabel, searchTerm, searchTime, topNSearch, searchLabel, searchText, topNSearchTime;
+
+    private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
+            backToSearch, nSearchEnter, backToNSearch;
+
+    private final JTable searchResTable, topNTable;
+
+    private final Set<String> stopWords = Stream.of(
+            "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
+            "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
+        ).collect(Collectors.toCollection(HashSet::new));
 
 
     private static Object[][] tmpData2 = {                // TODO don't make these literal instantiations
@@ -71,34 +95,12 @@ public class SearchEngineGUI {
             {4, "histories", "2kinghenryiv", new Integer(20)},
     };
 
-    private static DefaultListModel<String> listModel;        // Model to display the source file selection
-    private static TableModel termTableModel;                // Search Term custom, immutable, TableModel instance
-    private static TableModel topNTableModel;                // T custom, immutable, TableModel instance
-
-    private final ButtonListener listener;
-
-    private final JFrame window;                                    // Main window that displays all content
-    private final JList<String> fileList;
-
-    private final JPanel loadPanel, contentCards, searchPrompt, topNPrompt, topNResults, menuPanel, searchResult;
-    private final JTextField searchTermInput, nSearchTerm;
-    private final JScrollPane tableScrollPane, nResScrollPane, fileScrollPane;
-
-    private final JLabel selectionLabel, titleLabel1, titleLabel2, titleLabel3, mainText, lblPleaseSelectAn,
-            nSearchLabel, searchTerm, searchTime, topNSearch, searchLabel, searchText, topNSearchTime;
-
-    private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
-        backToSearch, nSearchEnter, backToNSearch;
-
-    private final JTable searchResTable, topNTable;
-
-
 
     public SearchEngineGUI() {
 
         logger.info("SearchEngineGUI Initialized");
 
-        listener = new ButtonListener();        //Custom ActionListener needed for button functionality
+        listener = new ButtonListener();
 
         // Main window that renders all of the content
         window = new JFrame("CS 1660 Search Engine");
@@ -298,7 +300,7 @@ public class SearchEngineGUI {
         topNTable.setModel(topNTableModel);
         nResScrollPane.setViewportView(topNTable);
 
-
+        // Once all components are initialized, display the main GUI window
         window.setVisible(true);
     }
 
@@ -353,7 +355,7 @@ public class SearchEngineGUI {
                 break;
             case Search:
                 logger.info("Searching for the following term:" + query);
-                hadoopCmd = String.format("hadoop jar ???.jar <INPUT> <OUTPUT>", query);
+                hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
 
                 // TODO call GCP
                 break;
@@ -421,17 +423,24 @@ public class SearchEngineGUI {
         logger.info("Attempting to connect to Google Cloud Platform...");
 //        authExplicit(GCP_AUTH_PATH);  //TODO comment out to save GCP credits
 
-        // Create a TreeMap to store the <Relative Path, Absolute Path> key value pairs to simplify file selection
-        srcFiles = new TreeMap<String, Path>();
-        // Read in the provided text files from the ASSET_PATH into the srcFiles TreeMap
-        loadFiles(ASSET_PATH, srcFiles);
+//        // Create a TreeMap to store the <Relative Path, Absolute Path> key value pairs to simplify file selection
+//        srcFiles = new TreeMap<String, Path>();
+//        // Read in the provided text files from the ASSET_PATH into the srcFiles TreeMap
+//        loadFiles(ASSET_PATH, srcFiles);
+        Scanner scan = new Scanner(new File(ASSET_PATH));
 
         // Set up the file selection JList Model to be immutable and allow multiple selections
         listModel = new DefaultListModel<String>();
-        // Add all of the relative path names to the selection list
-        for (Map.Entry<String, Path> e : srcFiles.entrySet()) {
-            listModel.addElement(e.getKey());
-        }
+
+        while(scan.hasNextLine())
+            listModel.addElement(scan.nextLine());
+
+
+//        // Add all of the relative path names to the selection list
+//        for (Map.Entry<String, Path> e : srcFiles.entrySet()) {
+//            listModel.addElement(e.getKey());
+//        }
+
 
 
         // TODO these need to be in their own method so that live data can be populated after the job finishes.
@@ -539,10 +548,14 @@ public class SearchEngineGUI {
                     return;
                 }
 
-                term = searchTermInput.getText();
+                term = searchTermInput.getText().toLowerCase();
+
+                if (stopWords.contains(term)) {
+                    showError("The search term you entered is a Stop Word, there will be no results.");
+                    return;
+                }
 
                 submitJob(JobType.Search, selectedFiles, term);
-
 
                 logger.info("Showing Search Results for Term: " + term);
 

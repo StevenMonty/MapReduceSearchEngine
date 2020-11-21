@@ -8,11 +8,21 @@
 * Configure the entire project as a maven proj with modules for frontend, backend.TopN, and backend.InvertedIndex to
     create all 3 artifacts in one build step
 * Need to be able to read credentials from outside the jar file
+* Make stop words an external file shared by all classes
+    * GUI: if user queries a stop word, show alert
     
 
 * Make sure I can create the GUI jar from the command line.     
 * Manually create cluster and connect app to cluster on init
 * --target to use specific java version
+
+WORKFLOW:
+1. Move selected files into new input directory
+2. Construct InvertedIndices from the new input dir
+3. Move results into new output dir
+3. Show Menu
+4. 
+
 
     
 Office Hour Questions:

@@ -1,6 +1,6 @@
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
@@ -16,55 +16,47 @@ import java.util.stream.Stream;
 
 public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
 
-    private Text word;
-    private IntWritable one;
     private FileSplit split;
     private Integer docID;
-    private StringTokenizer tokens;
     private Set<String> stopWords;
     private Pattern regex;
     private Matcher match;
+    private Text path;
 
     @Override
     public void setup(Context context) throws IOException, InterruptedException {
-        regex = Pattern.compile("[a-zA-Z]+");
         stopWords = Stream.of(
                 "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
                 "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
         ).collect(Collectors.toCollection(HashSet::new));
 
-        word = new Text();
-        one = new IntWritable(1);
+        regex = Pattern.compile("[a-zA-Z]+");
         split = (FileSplit)context.getInputSplit();
-        docID = split.getPath().getName().hashCode();   // Generate document ID to be the hash of the file name
+        // TODO print this path, it may contain the GCP bucket info
+        //   path.name.split("input/")[1] ??
+//        docID = split.getPath().getName().hashCode();   // Generate document ID to be the hash of the file name
+        path = new Text(split.getPath().toString().split("input/")[1]);
+
+
+        System.out.println("Map Setup, path: " + path);
     }
 
     @Override
     protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 
-        tokens = new StringTokenizer(value.toString(), "\n"); // TODO need diff delim
+        String line = value.toString();
+        String word = null;
 
-        String val = value.toString();
+        match = regex.matcher(line);
 
-        // Check if the word has already been seen. If so, increment its existing count, else add count = 1 to the Map
-//        if (tMap.containsKey(val))
-//            tMap.put(val, tMap.get(val)+1);
-//        else
-//            tMap.put(val, 1L);
+        while(match.find()) {
+            word = match.group().toLowerCase();
 
-    }
+            if (stopWords.contains(word) || word.length() == 1)  // Only add this word if it's not a stop word or
+                continue;                                        // if len is 1 because Shakespeare adds 'd to end of words and that gets chopped off by the regex
 
-    @Override
-    protected void cleanup(Context context) throws IOException, InterruptedException {
-
-//        String s;
-//        long l;
-//        for (Map.Entry<String, Long> entry: tMap.entrySet()){
-//            s = entry.getKey();
-//            l = entry.getValue();
-//
-//            context.write(new Text(s), new LongWritable(l));
-//        }
+            context.write(new Text(word), path);
+        }
 
     }
 
