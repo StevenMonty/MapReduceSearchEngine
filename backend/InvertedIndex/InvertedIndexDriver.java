@@ -35,7 +35,7 @@ public class InvertedIndexDriver {
         job.setMapOutputValueClass(Text.class);
 
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(Object.class);
 
         // TODO
         // job.setNumReduceTasks(1);

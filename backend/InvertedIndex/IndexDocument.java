@@ -20,6 +20,13 @@ public class IndexDocument implements Comparable<IndexDocument>, Serializable {
         this.docID = Math.abs(this.hashCode());
     }
 
+    public IndexDocument(String docName, String docDir, String frequency, String docID) {
+        this.docName = docName;
+        this.docDir = docDir;
+        this.frequency = Integer.parseInt(frequency);
+        this.docID = Integer.parseInt(docID);
+    }
+
     public int getFrequency() {
         return this.frequency;
     }
@@ -42,10 +49,10 @@ public class IndexDocument implements Comparable<IndexDocument>, Serializable {
     @Override
     public String toString() {
         return "Doc{" +
-                "ID=" + docID +
-                ", docDir:'" + docDir + '\'' +
-                ", docName:'" + docName + '\'' +
-                ", freq:" + frequency +
+                "ID:" + docID +
+                ", Dir:'" + docDir + '\'' +
+                ", Name:'" + docName + '\'' +
+                ", Freq:" + frequency +
                 '}';
     }
 

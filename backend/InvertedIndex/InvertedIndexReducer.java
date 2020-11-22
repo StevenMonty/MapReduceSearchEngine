@@ -1,7 +1,7 @@
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 
@@ -58,24 +58,16 @@ public class InvertedIndexReducer extends Reducer<Text, Text, Text, Text> {
 
         map.put(key.toString(), term);
 
-//        if (i++ % 100 == 0 && DEBUG_MODE)
-//            System.out.println("Reduce writing to context, key: " + key + " val: " + res.toString());
-
-//        context.write(key, new Text(res.toString()));
-
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         System.out.println("In Reducer Cleanup:");
         pq = new PriorityQueue<>(map.values());
-        Iterator<IndexTerm> it = pq.iterator();
 
-        while (it.hasNext()){
-            term = it.next();
-            context.write(new Text(term.getTerm() + " (tot:" + term.getFrequency() + ")"), new Text(term.getOccurrences().toString()));
-
+        while (!pq.isEmpty()) {
+            term = pq.poll();
+            context.write(new Text(term.getTerm() + ":"), new Text(term.getOccurrences().toString()));
         }
-
     }
 }

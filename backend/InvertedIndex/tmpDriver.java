@@ -74,24 +74,54 @@ true
 
 
 
-        IndexTerm tmp;
-        while(!pq.isEmpty()){
-            tmp = pq.poll();
-            System.out.println(tmp);
-            int count = tmp.getFrequency();
-            int tmpCount = 0;
-            TreeSet<IndexDocument> map = tmp.getOccurrences();
-            tmpCount += map.stream().mapToInt(IndexDocument::getFrequency).sum();
+//        IndexTerm tmp;
+//        while(!pq.isEmpty()){
+//            tmp = pq.poll();
+//            System.out.println(tmp);
+//            int count = tmp.getFrequency();
+//            int tmpCount = 0;
+//            TreeSet<IndexDocument> map = tmp.getOccurrences();
+//            tmpCount += map.stream().mapToInt(IndexDocument::getFrequency).sum();
+//        }
 
-            System.out.println(count == tmpCount);
+        System.out.println("Before");
+        System.out.println(pq);
 
-            System.out.println();
-        }
+        String ser = base64Encode(pq);
+
+        System.out.println("encoded:");
+        System.out.println(ser);
+
+
+        PriorityQueue<IndexTerm> loaded = (PriorityQueue<IndexTerm>) fromString(ser);
+        System.out.println("reconstructed:");
+        System.out.println(loaded);
+
+        System.out.println("eq: " + pq.equals(loaded));
+        System.out.println("eq: " + pq.toString().equals(loaded.toString()));
 
 
 
 
 
+    }
 
+    /** Read the object from Base64 string. */
+    private static Object fromString( String s ) throws IOException, ClassNotFoundException {
+        byte [] data = Base64.getDecoder().decode( s );
+        ObjectInputStream ois = new ObjectInputStream(
+                new ByteArrayInputStream(  data ) );
+        Object o  = ois.readObject();
+        ois.close();
+        return o;
+    }
+
+    /** Write the object to a Base64 string. */
+    private static String base64Encode( Serializable o ) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream( baos );
+        oos.writeObject( o );
+        oos.close();
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
     }
 }

@@ -26,6 +26,8 @@ import java.util.*;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,6 +39,9 @@ public class SearchEngineGUI {
     private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
     private static String GCP_AUTH_PATH;
     private static String BUCKET_NAME;
+    private static String JOB_OUTPUT_PATH = "/Users/StevenMontalbano/Programs/cs1660/FinalProject/part-r-00000";    //TODO set this somewhere
+    private static LinkedHashMap<String, IndexTerm> invertedIndices;    // TODO make sure this class is packaged
+
     // String names for each Card that is used to change which menu is being displayed
     private static final String LOAD_SCREEN = "Let's User Select Which Files to Load";
     private static final String MAIN_MENU = "Let's User Choose to Search a Term or Calculate Top-N Terms";
@@ -49,7 +54,6 @@ public class SearchEngineGUI {
     private static final String[] topNColNames = {"Term", "Total Occurances"};
     private static long startTime = 0L;
 
-    private static TreeMap<String, Path> srcFiles;
     private static List<String> selectedFiles;              // TODO clear this on each return to main screen
 
     private static DefaultListModel<String> listModel;      // Model to display the source file selection
@@ -371,7 +375,7 @@ public class SearchEngineGUI {
 
     }
 
-    private static void getJobResults(JobType job) {
+    private static void getJobResults(JobType job, Object query) {
 
         // TODO read results from the local docker container to get the rendering/parsing logic working
 
@@ -380,6 +384,27 @@ public class SearchEngineGUI {
 
 
         // TODO after returning to main menu / closing the program delete the results directory
+
+        switch (job) {
+//            case Construct:
+//                logger.info("Constructing Inverted Indices with the following files:");
+//                logger.info(inputFiles.toString());
+//                // TODO call GCP
+//                break;
+            case Search:
+                logger.info("Reading the InvertedIndices for the term:" + query);
+                IndexTerm tmp = new IndexTerm((String)query);
+
+//                if(invertedIndices.contains(tmp)){
+//                    logger.info("Found the term! Results:");
+////                    System.out.println(invertedIndices.);
+//                }
+
+                break;
+            case TopN:
+                logger.info("Reading the InvertedIndices for the top " + query + " terms");
+                break;
+        }
 
 
 
@@ -435,14 +460,6 @@ public class SearchEngineGUI {
         while(scan.hasNextLine())
             listModel.addElement(scan.nextLine());
 
-
-//        // Add all of the relative path names to the selection list
-//        for (Map.Entry<String, Path> e : srcFiles.entrySet()) {
-//            listModel.addElement(e.getKey());
-//        }
-
-
-
         // TODO these need to be in their own method so that live data can be populated after the job finishes.
 
         termTableModel = new DefaultTableModel(tmpData, searchColNames) {
@@ -474,6 +491,66 @@ public class SearchEngineGUI {
                 .forEach(f -> map.put(f.toString().split("assets/")[1], f));       /*  Filter out the absolute path to display cleaner working directory for user selection  */
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+    }
+
+    private static void parseInvertedIndices() throws FileNotFoundException {
+
+        logger.info("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
+        Scanner scan = new Scanner(new File(JOB_OUTPUT_PATH));
+
+        String line;
+
+        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
+        IndexTerm term;
+        IndexDocument doc;
+
+        String word, ID, dir, name = null, freq = null;
+
+        Pattern regex = Pattern.compile("\\{([^}]+)\\}");
+        Matcher match;
+        String[] pieces;
+
+        ArrayList<IndexDocument> docList;
+
+
+        while(scan.hasNextLine()){
+            line = scan.nextLine().replaceAll("'", "");
+            word = line.split(":", 2)[0];
+            match = regex.matcher(line.split(":", 2)[1]);
+            docList = new ArrayList<>();
+
+            while(match.find()){
+                pieces = match.group().replaceAll("\\{*\\}*", "").split("[,:]+");
+                ID = pieces[1];
+                dir = pieces[3];
+                name = pieces[5];
+                freq = pieces[7];
+                docList.add(new IndexDocument(name, dir, freq, ID));    // IndexDocument(String docName, String docDir, int frequency, int docID)
+            }
+
+            term = new IndexTerm(word);
+            term.addDocuments(docList);
+            pq.add(term);
+        }
+
+
+
+
+        IndexTerm[] arr = pq.toArray(new IndexTerm[pq.size()]);
+        Arrays.sort(arr, pq.comparator());
+        for (IndexTerm t: arr)
+            invertedIndices.put(t.getTerm(), t);
+
+        int i = 0;
+        for (IndexTerm indexTerm : pq) {
+
+            if (i++ > 15)
+                break;
+
+            term = indexTerm;
+            System.out.println(term.getTerm() + ":" + term.getOccurrences().toString());
         }
 
     }
