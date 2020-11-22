@@ -1,6 +1,3 @@
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Objects;

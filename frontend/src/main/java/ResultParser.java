@@ -1,6 +1,5 @@
 import javax.swing.*;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,17 +61,7 @@ public class ResultParser extends SwingWorker<LinkedHashMap<String, IndexTerm>, 
                 hmap.put(term.getTerm(), term);
             }
 
-//            System.out.println();
-//            System.out.println();
-//
-//            Iterator<Map.Entry<String, IndexTerm>> it = hmap.entrySet().iterator();
-//            Map.Entry<String, IndexTerm> e;
-//            while (it.hasNext()) {
-//                e = it.next();
-////                System.out.println(e.getKey() + "(tot: " + e.getValue().getFrequency() + ") :" + e.getValue().getOccurrences().toString());
-//            }
-
-//            return true;
+            Thread.sleep(10000);
 
         } catch (Exception e) {
             e.printStackTrace();

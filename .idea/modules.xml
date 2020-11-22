@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/FinalProject.iml" filepath="$PROJECT_DIR$/FinalProject.iml" />
+      <module fileurl="file://$PROJECT_DIR$/IndexClasses/IndexClasses.iml" filepath="$PROJECT_DIR$/IndexClasses/IndexClasses.iml" />
       <module fileurl="file://$PROJECT_DIR$/backend/InvertedIndex/backend.InvertedIndex.iml" filepath="$PROJECT_DIR$/backend/InvertedIndex/backend.InvertedIndex.iml" />
       <module fileurl="file://$PROJECT_DIR$/backend/SearchTerm/backend.SearchTerm.iml" filepath="$PROJECT_DIR$/backend/SearchTerm/backend.SearchTerm.iml" />
       <module fileurl="file://$PROJECT_DIR$/backend/TopN/backend.TopN.iml" filepath="$PROJECT_DIR$/backend/TopN/backend.TopN.iml" />

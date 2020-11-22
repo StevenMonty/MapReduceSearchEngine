@@ -3,13 +3,14 @@
  *
  * @author Steven Montalbano
  */
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -75,10 +76,10 @@ public class SearchEngineGUI {
 
     private static JTable searchResTable, topNTable;
 
-    private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurances"};
-    private static final String[] topNColNames = {"Term", "Total Occurances"};
+    private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurrences"};
+    private static final String[] topNColNames = {"Rank" , "Term", "Total Occurrences"};
 
-    private static Object[][] topNTableData = new Object[2][2];                // TODO don't make these literal instantiations
+    private static Object[][] topNTableData = new Object[3][3];                // TODO don't make these literal instantiations
 
     private static Object[][] searchTermTableData = new Object[4][4];                // TODO don't make these literal instantiations
 
@@ -287,6 +288,13 @@ public class SearchEngineGUI {
 //        topNTable.setModel(topNTableModel);
         nResScrollPane.setViewportView(topNTable);
 
+        window.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                System.out.println("Application Closed, Runing CleanUp()...");
+                //TODO clean up GCP bucket input/output dirs
+            }
+        });
+
         // Once all components are initialized, display the main GUI window
         window.setVisible(true);
     }
@@ -399,6 +407,7 @@ public class SearchEngineGUI {
             case TopN:
                 query = (Integer) query;
                 logger.info("Reading the InvertedIndices for the top " + query + " terms");
+                renderQueryResults(job, query);
                 break;
         } // end switch
 
@@ -410,17 +419,18 @@ public class SearchEngineGUI {
      * @param results
      */
     private static void renderQueryResults(JobType job, Object results){
-
+        int i = 0;
+        IndexTerm term;
+        IndexDocument doc;
         switch (job) {
             case Search:
-                IndexTerm term = (IndexTerm)results;
+                term = (IndexTerm)results;
                 System.out.println("renderQueryResults (term): " + term);
                 searchTermTableData = new Object[term.getOccurrences().size()][4];
-                Iterator<IndexDocument> it = term.getOccurrences().stream().iterator();
-                IndexDocument doc;
-                int i = 0;
-                while(it.hasNext()){
-                    doc = it.next();
+                Iterator<IndexDocument> termIter = term.getOccurrences().stream().iterator();
+
+                while(termIter.hasNext()){
+                    doc = termIter.next();
                     searchTermTableData[i][0] = doc.getDocID();
                     searchTermTableData[i][1] = doc.getDocDir();
                     searchTermTableData[i][2] = doc.getDocName();
@@ -436,12 +446,35 @@ public class SearchEngineGUI {
                     }
                 };
 
-
                 searchResTable.setModel(termTableModel);
                 searchResTable.repaint();
-
                 break;
+
             case TopN:
+                Integer N = (Integer) results;
+                System.out.println("renderQueryResults (topN): " + N);
+
+                topNTableData = new Object[N][3];
+                Iterator<IndexTerm> topNIter = invertedIndices.values().iterator();
+
+                while(i < N && topNIter.hasNext()){
+                    term = topNIter.next();
+                    topNTableData[i][0] = i+1;  // List this term at Pos 1, being most frequent, but inserting as index 0
+                    topNTableData[i][1] = term.getTerm();
+                    topNTableData[i][2] = term.getFrequency();
+                    i++;
+                }
+
+                topNTableModel = new DefaultTableModel(topNTableData, topNColNames) {
+                    private static final long serialVersionUID = 1L;
+
+                    public boolean isCellEditable(int row, int column) {
+                        return false;//This causes all cells to be not editable
+                    }
+                };
+
+                topNTable.setModel(topNTableModel);
+                topNTable.repaint();
                 break;
         } // end switch
 
@@ -485,10 +518,7 @@ public class SearchEngineGUI {
         logger.info("Attempting to connect to Google Cloud Platform...");
 //        authExplicit(GCP_AUTH_PATH);  //TODO comment out to save GCP credits
 
-//        // Create a TreeMap to store the <Relative Path, Absolute Path> key value pairs to simplify file selection
-//        srcFiles = new TreeMap<String, Path>();
-//        // Read in the provided text files from the ASSET_PATH into the srcFiles TreeMap
-//        loadFiles(ASSET_PATH, srcFiles);
+
         Scanner scan = new Scanner(new File(ASSET_PATH));
 
         // Set up the file selection JList Model to be immutable and allow multiple selections
@@ -499,14 +529,6 @@ public class SearchEngineGUI {
 
         // TODO these need to be in their own method so that live data can be populated after the job finishes.
 
-
-        topNTableModel = new DefaultTableModel(topNTableData, topNColNames) {
-            private static final long serialVersionUID = 1L;
-
-            public boolean isCellEditable(int row, int column) {
-                return false;//This causes all cells to be not editable
-            }
-        };
     }
 
     private static void loadFiles(String assetPath, Map<String, Path> map) {
@@ -524,53 +546,6 @@ public class SearchEngineGUI {
         }
 
     }
-
-//    private static void parseInvertedIndices() throws FileNotFoundException {
-//
-//        System.out.println("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
-//        Scanner scan = new Scanner(new File(JOB_OUTPUT_PATH));
-//
-//        IndexTerm term;
-//        IndexDocument doc;
-//        String line, word, ID, dir, name, freq, tmp;
-//        Pattern regex = Pattern.compile("\\{([^}]+)\\}");
-//        Matcher match;
-//        String[] pieces;
-//
-//
-//        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
-//        ArrayList<IndexDocument> docList;
-//
-//        while(scan.hasNextLine()){
-//            line = scan.nextLine().replaceAll("'", "");
-//            word = line.split(":", 2)[0];
-//            match = regex.matcher(line.split(":", 2)[1]);
-//            docList = new ArrayList<>();
-//
-//            while(match.find()){
-//                tmp = match.group().replaceAll("\\{*\\}*", "");
-//                pieces = tmp.split("[,:]+");
-//                ID = pieces[1];
-//                dir = pieces[3];
-//                name = pieces[5];
-//                freq = pieces[7];
-//                docList.add(new IndexDocument(name, dir, freq, ID));    // IndexDocument(String docName, String docDir, int frequency, int docID)
-//            }
-//
-//            term = new IndexTerm(word);
-//            term.addDocuments(docList);
-//            pq.add(term);
-//        }
-//        System.out.println("Done constructing PQ, size: " + pq.size());
-//
-//        while (!pq.isEmpty()) {
-//            term = pq.poll();
-//            System.out.println(term.getTerm() + "(tot: " + term.getFrequency() + ") :" + term.getOccurrences().toString());
-//            invertedIndices.put(term.getTerm(), term);
-//        }
-//
-//        logger.info("Done parsing InvertedIndices results");
-//    }
 
     private void resetText() {
         searchTime.setText("Your Search was Executed in <> ms");
@@ -685,14 +660,14 @@ public class SearchEngineGUI {
 //				searchStatus.setBackground(Color.BLUE);
 
                 //TODO mocked job execution: call method to submit job to Hadoop
-                try {
-//					searchStatus.setText("Connecting to Hadoop Cluster...\n");
-//					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
-//					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
-                    Thread.sleep(1500);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
+//                try {
+////					searchStatus.setText("Connecting to Hadoop Cluster...\n");
+////					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
+////					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
+//                    Thread.sleep(1500);
+//                } catch (InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
 
                 searchTime.setText(searchTime.getText().replace("<>", Long.valueOf(System.currentTimeMillis() - startTime).toString()));
 
@@ -766,6 +741,11 @@ public class SearchEngineGUI {
                         showError("Please Enter N as in Integer Value to Continue.");
                         return;
                     }
+
+                    if (N <= 0){
+                        showError("Searching for the TopN terms with a N value <= 0 will yield no results.\nPlease enter a positive integer.");
+                        return;
+                    }
                 }
 
                 logger.info("Showing Results for Top N = " + N + " Terms");
@@ -781,16 +761,22 @@ public class SearchEngineGUI {
 
                 startTime = System.currentTimeMillis();
 
+                try {
+                    getJobResults(JobType.TopN, N);
+                } catch (NoResultException noResultException) {
+                    noResultException.printStackTrace();
+                }
+
 
                 //TODO mocked job execution: call method to submit job to Hadoop
-                try {
-// 					searchStatus.setText("Connecting to Hadoop Cluster...\n");
-// 					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
-// 					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
-                    Thread.sleep(1500);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
+//                try {
+//// 					searchStatus.setText("Connecting to Hadoop Cluster...\n");
+//// 					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
+//// 					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
+//                    Thread.sleep(1500);
+//                } catch (InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
 
 
                 topNSearchTime.setText(topNSearchTime.getText().replace("<>", Long.valueOf(System.currentTimeMillis() - startTime).toString()));

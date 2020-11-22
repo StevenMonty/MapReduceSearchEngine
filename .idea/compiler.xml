@@ -7,10 +7,13 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="frontend" />
+        <module name="backend.InvertedIndex" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="backend.InvertedIndex" target="1.8" />
       <module name="backend.tmp" target="1.8" />
+      <module name="FinalProject" target="1.8" />
       <module name="frontend" target="1.8" />
     </bytecodeTargetLevel>
   </component>
