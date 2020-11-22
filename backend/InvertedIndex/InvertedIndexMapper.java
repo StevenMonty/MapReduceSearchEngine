@@ -22,9 +22,14 @@ public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
     private Pattern regex;
     private Matcher match;
     private Text path;
+    private boolean DEBUG_MODE;
+
 
     @Override
     public void setup(Context context) throws IOException, InterruptedException {
+
+        DEBUG_MODE = context.getConfiguration().getBoolean("DEBUG_MODE", false);
+
         stopWords = Stream.of(
                 "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
                 "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
@@ -38,7 +43,7 @@ public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
         path = new Text(split.getPath().toString().split("input/")[1]);
 
 
-        System.out.println("Map Setup, path: " + path);
+//        System.out.println("Map Setup, path: " + path);
     }
 
     @Override
@@ -49,12 +54,15 @@ public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
 
         match = regex.matcher(line);
 
+        int i = 0;
         while(match.find()) {
             word = match.group().toLowerCase();
 
             if (stopWords.contains(word) || word.length() == 1)  // Only add this word if it's not a stop word or
                 continue;                                        // if len is 1 because Shakespeare adds 'd to end of words and that gets chopped off by the regex
 
+            if (i++ % 100 == 0 && DEBUG_MODE)
+                System.out.println("map writing to context, key: " + word + " val: " + path);
             context.write(new Text(word), path);
         }
 

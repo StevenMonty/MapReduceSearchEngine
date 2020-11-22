@@ -1,59 +1,81 @@
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class InvertedIndexReducer extends Reducer<Text, Text, Text, Text> {
 
-    private HashMap<String, Integer> map;
+    private HashMap<String, Integer> files; // <FILE_PATH, OCCURRENCES_IN_THIS_FILE>
     private StringBuilder res;
+    private IndexTerm term;
+//    private IndexDocument doc;
+    private PriorityQueue<IndexTerm> pq;
+    private HashMap<String, IndexTerm> map;
+    int i;
+    private boolean DEBUG_MODE;
+
+    int slashPos;
+    String docName, docDir, path;
+    ArrayList<IndexDocument> docList;
+
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
+        map = new HashMap<>();
+//        pq = new PriorityQueue<>();
+        i = 0;
+        DEBUG_MODE = context.getConfiguration().getBoolean("DEBUG_MODE", false);
     }
 
     @Override
     protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-        map  = new HashMap<String, Integer>();
+        files = new HashMap<String, Integer>();
         res = new StringBuilder();
 
         String val;
         for(Text value: values){
             val = value.toString();
-            map.merge(val, 1, Integer::sum);
+            files.merge(val, 1, Integer::sum);
         }
 
-        for (Map.Entry<String, Integer> entry: map.entrySet())
-            res.append(entry.getKey() + "/" + entry.getValue() + ";");
+        if (map.containsKey(key.toString()))
+            term = map.get(key.toString());
+        else
+            term = new IndexTerm(key.toString());
 
-        System.out.println("Reduce writing to context, key: " + key + " val: " + res.toString());
-        context.write(key, new Text(res.toString()));
+
+        docList = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry: files.entrySet()){
+            slashPos = entry.getKey().lastIndexOf("/");
+            docDir = entry.getKey().substring(0, slashPos);
+            docName = entry.getKey().substring(slashPos+1);
+            docList.add(new IndexDocument(docName, docDir, entry.getValue()));
+        }
+
+        term.addDocuments(docList);
+
+        map.put(key.toString(), term);
+
+//        if (i++ % 100 == 0 && DEBUG_MODE)
+//            System.out.println("Reduce writing to context, key: " + key + " val: " + res.toString());
+
+//        context.write(key, new Text(res.toString()));
 
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
+        System.out.println("In Reducer Cleanup:");
+        pq = new PriorityQueue<>(map.values());
+        Iterator<IndexTerm> it = pq.iterator();
 
-        // Get the first N elements from the tMap, since they are stored in ascending order on the key which is the
-        // number of occurrences for that value (the word)
-//        TreeMap<Long, String> result = tMap2.entrySet().stream().limit(N).collect(
-//                TreeMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll);
-//
-//        String s;
-//        long l;
-//        // Iterate through the results TreeMap just created and write the results to the context.
-//        for (Map.Entry<Long, String> entry: result.entrySet()){
-//
-//            s = entry.getValue();
-//            l = entry.getKey();
-//
-//            context.write(new Text(l), new Text(s));
-//        }
+        while (it.hasNext()){
+            term = it.next();
+            context.write(new Text(term.getTerm() + " (tot:" + term.getFrequency() + ")"), new Text(term.getOccurrences().toString()));
+
+        }
 
     }
 }

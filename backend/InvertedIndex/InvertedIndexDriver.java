@@ -15,6 +15,8 @@ public class InvertedIndexDriver {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
+        conf.setBoolean("DEBUG_MODE", false);
+
         // if less than two paths
         // provided will show error
         if (otherArgs.length < 2)

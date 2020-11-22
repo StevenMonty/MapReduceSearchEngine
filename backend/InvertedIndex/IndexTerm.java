@@ -3,13 +3,16 @@ import org.apache.hadoop.io.Text;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.TreeSet;
 
 public class IndexTerm implements Comparable<IndexTerm>, Serializable {
 
-    private String term;                // The term
-    private int frequency;          // Total term occurrences across all docs
-    private TreeSet<IndexDocument> occurrences;   // All documents this term appeared in
+    private static final long serialVersionUID = 1L;
+
+    private String term;                            // The word being indexed
+    private int frequency;                          // Total term occurrences across all docs
+    private TreeSet<IndexDocument> occurrences;     // All documents this term appeared in
 
     public IndexTerm(String term) {
         this.term = term;
@@ -34,12 +37,34 @@ public class IndexTerm implements Comparable<IndexTerm>, Serializable {
         this.frequency += doc.getFrequency();
     }
 
+    public void addDocuments(ArrayList<IndexDocument> docs) {
+        this.occurrences.addAll(docs);
+        docs.forEach(d -> this.frequency += d.getFrequency());
+    }
+
+    public String getTerm() {
+        return this.term;
+    }
+
     public int getFrequency() {
         return this.frequency;
     }
 
     public TreeSet<IndexDocument> getOccurrences() {
         return this.occurrences;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        IndexTerm indexTerm = (IndexTerm) o;
+        return term.equals(indexTerm.term);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(term);
     }
 
     @Override

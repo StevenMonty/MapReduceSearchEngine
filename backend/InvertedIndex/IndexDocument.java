@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class IndexDocument implements Comparable<IndexDocument>, Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private String docName;     // The name of this documents file
     private String docDir;      // The directories this document was in
     private int frequency;      // The number of time the term this document belongs to occured in this doc
