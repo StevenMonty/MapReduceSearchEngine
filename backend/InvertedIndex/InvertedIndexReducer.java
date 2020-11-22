@@ -25,7 +25,6 @@ public class InvertedIndexReducer extends Reducer<Text, Text, Text, Text> {
         String val;
         for(Text value: values){
             val = value.toString();
-            System.out.println("Reduce, Key: " + key + " vals: " + val);
             map.merge(val, 1, Integer::sum);
         }
 
