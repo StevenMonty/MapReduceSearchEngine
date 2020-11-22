@@ -340,7 +340,7 @@ public class SearchEngineGUI {
     String outputPath = "OUTPUT_PATH"; //TODO
 
 
-    private static void submitJob(JobType job, List<String> inputFiles, Object query) {
+    private static void submitJob(JobType job, List<String> inputFiles, Object query) throws FileNotFoundException {
 
         System.out.println("Submit Job called");
 
@@ -356,12 +356,15 @@ public class SearchEngineGUI {
                 logger.info(inputFiles.toString());
                 hadoopCmd = "hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>";
                 // TODO call GCP
+
                 break;
             case Search:
                 logger.info("Searching for the following term:" + query);
                 hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
 
                 // TODO call GCP
+
+                getJobResults(job, query);
                 break;
             case TopN:
                 logger.info("Searching for the top " + query + " terms");
@@ -372,6 +375,8 @@ public class SearchEngineGUI {
 
         System.out.println("Mock hadoop job call:");
         System.out.println(hadoopCmd);
+
+        parseInvertedIndices();
 
     }
 
@@ -393,12 +398,11 @@ public class SearchEngineGUI {
 //                break;
             case Search:
                 logger.info("Reading the InvertedIndices for the term:" + query);
-                IndexTerm tmp = new IndexTerm((String)query);
 
-//                if(invertedIndices.contains(tmp)){
-//                    logger.info("Found the term! Results:");
-////                    System.out.println(invertedIndices.);
-//                }
+                if(invertedIndices.containsKey(query)){
+                    logger.info("Found the term! Results:");
+                    System.out.println(invertedIndices.get(query));
+                }
 
                 break;
             case TopN:
@@ -497,23 +501,19 @@ public class SearchEngineGUI {
 
     private static void parseInvertedIndices() throws FileNotFoundException {
 
-        logger.info("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
+        System.out.println("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
         Scanner scan = new Scanner(new File(JOB_OUTPUT_PATH));
 
-        String line;
-
-        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
         IndexTerm term;
         IndexDocument doc;
-
-        String word, ID, dir, name = null, freq = null;
-
+        String line, word, ID, dir, name = null, freq = null;
         Pattern regex = Pattern.compile("\\{([^}]+)\\}");
         Matcher match;
         String[] pieces;
 
-        ArrayList<IndexDocument> docList;
 
+        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
+        ArrayList<IndexDocument> docList;
 
         while(scan.hasNextLine()){
             line = scan.nextLine().replaceAll("'", "");
@@ -534,25 +534,15 @@ public class SearchEngineGUI {
             term.addDocuments(docList);
             pq.add(term);
         }
+        System.out.println("Done constructing PQ, size: " + pq.size());
 
-
-
-
-        IndexTerm[] arr = pq.toArray(new IndexTerm[pq.size()]);
-        Arrays.sort(arr, pq.comparator());
-        for (IndexTerm t: arr)
-            invertedIndices.put(t.getTerm(), t);
-
-        int i = 0;
-        for (IndexTerm indexTerm : pq) {
-
-            if (i++ > 15)
-                break;
-
-            term = indexTerm;
-            System.out.println(term.getTerm() + ":" + term.getOccurrences().toString());
+        while (!pq.isEmpty()) {
+            term = pq.poll();
+            System.out.println(term.getTerm() + "(tot: " + term.getFrequency() + ") :" + term.getOccurrences().toString());
+            invertedIndices.put(term.getTerm(), term);
         }
 
+        logger.info("Done parsing InvertedIndices results");
     }
 
     private void resetText() {
@@ -603,7 +593,11 @@ public class SearchEngineGUI {
 
 
                 if (!selectedFiles.isEmpty()) {
-                    submitJob(JobType.Construct, selectedFiles, null);
+                    try {
+                        submitJob(JobType.Construct, selectedFiles, null);
+                    } catch (FileNotFoundException fileNotFoundException) {
+                        fileNotFoundException.printStackTrace();
+                    }
                     CardLayout cl = (CardLayout) (contentCards.getLayout());
                     cl.show(contentCards, MAIN_MENU);
                 }
@@ -632,7 +626,7 @@ public class SearchEngineGUI {
                     return;
                 }
 
-                submitJob(JobType.Search, selectedFiles, term);
+//                submitJob(JobType.Search, selectedFiles, term);
 
                 logger.info("Showing Search Results for Term: " + term);
 
@@ -736,7 +730,7 @@ public class SearchEngineGUI {
 
                 logger.info("Showing Results for Top N = " + N + " Terms");
 
-                submitJob(JobType.TopN, selectedFiles, N);
+//                submitJob(JobType.TopN, selectedFiles, N);
 
 
                 topNSearch.setText(topNSearch.getText().replace("<>", String.valueOf(N)));

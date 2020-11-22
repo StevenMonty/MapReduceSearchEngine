@@ -44,14 +44,14 @@ public class ResultParser {
             term = new IndexTerm(word);
             term.addDocuments(docList);
             pq.add(term);
+
+
         }
 
         LinkedHashMap<String, IndexTerm> hmap = new LinkedHashMap<>();
 
-        int i = 0;
+//        int i = 0;
         while (!pq.isEmpty()) {
-            if (i++ > 15)
-                break;
 
             term = pq.poll();
             System.out.println(term.getTerm() + "(tot: " + term.getFrequency() + ") :" + term.getOccurrences().toString());
