@@ -4,14 +4,6 @@
  * @author Steven Montalbano
  */
 
-import com.google.api.gax.paging.Page;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.common.collect.Lists;
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
@@ -26,8 +18,6 @@ import java.util.*;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -35,12 +25,15 @@ import java.util.stream.Stream;
 public class SearchEngineGUI {
     private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
 
+    private static ResultParser rp = new ResultParser();
+
+
     // Environment Var Setup
     private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
     private static String GCP_AUTH_PATH;
     private static String BUCKET_NAME;
     private static String JOB_OUTPUT_PATH = "/Users/StevenMontalbano/Programs/cs1660/FinalProject/part-r-00000";    //TODO set this somewhere
-    private static LinkedHashMap<String, IndexTerm> invertedIndices;    // TODO make sure this class is packaged
+    private static LinkedHashMap<String, IndexTerm> invertedIndices = null;    // TODO make sure this class is packaged
 
     // String names for each Card that is used to change which menu is being displayed
     private static final String LOAD_SCREEN = "Let's User Select Which Files to Load";
@@ -50,8 +43,7 @@ public class SearchEngineGUI {
     private static final String TOP_N_MENU = "Let's User Calculate the Top N Frequent Terms";
     private static final String TOP_N_RESULT = "Show Top N Results";
 
-    private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurances"};
-    private static final String[] topNColNames = {"Term", "Total Occurances"};
+
     private static long startTime = 0L;
 
     private static List<String> selectedFiles;              // TODO clear this on each return to main screen
@@ -75,29 +67,20 @@ public class SearchEngineGUI {
     private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
             backToSearch, nSearchEnter, backToNSearch;
 
-    private final JTable searchResTable, topNTable;
 
     private final Set<String> stopWords = Stream.of(
             "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
             "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
         ).collect(Collectors.toCollection(HashSet::new));
 
+    private static JTable searchResTable, topNTable;
 
-    private static Object[][] tmpData2 = {                // TODO don't make these literal instantiations
-            {"THESE ARE", "FAKE RESULTS"},
-            {"histories", new Integer(5000)},
-            {"histories", new Integer(3000)},
-            {"Blhistoriesack", new Integer(2000)},
-            {"histories", new Integer(1000)},
-    };
+    private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurances"};
+    private static final String[] topNColNames = {"Term", "Total Occurances"};
 
-    private static Object[][] tmpData = {                // TODO don't make these literal instantiations
-            {0, "THESE ARE", "FAKE RESULTS", new Integer(5)},
-            {1, "histories", "1kinghenryiv", new Integer(5)},
-            {2, "histories", "1kinghenryiv", new Integer(3)},
-            {3, "Blhistoriesack", "2kinghenryiv", new Integer(2)},
-            {4, "histories", "2kinghenryiv", new Integer(20)},
-    };
+    private static Object[][] topNTableData = new Object[2][2];                // TODO don't make these literal instantiations
+
+    private static Object[][] searchTermTableData = new Object[4][4];                // TODO don't make these literal instantiations
 
 
     public SearchEngineGUI() {
@@ -269,8 +252,8 @@ public class SearchEngineGUI {
         tableScrollPane.setBounds(22, 160, 491, 277);
         searchResult.add(tableScrollPane);
 
-        searchResTable = new JTable(tmpData, searchColNames);
-        searchResTable.setModel(termTableModel);
+        searchResTable = new JTable(searchTermTableData, searchColNames);
+//        searchResTable.setModel(termTableModel);
         tableScrollPane.setViewportView(searchResTable);
 
         // Top-N result view
@@ -300,8 +283,8 @@ public class SearchEngineGUI {
         nResScrollPane.setBounds(28, 112, 478, 324);
         topNResults.add(nResScrollPane);
 
-        topNTable = new JTable(tmpData2, topNColNames);
-        topNTable.setModel(topNTableModel);
+        topNTable = new JTable(topNTableData, topNColNames);
+//        topNTable.setModel(topNTableModel);
         nResScrollPane.setViewportView(topNTable);
 
         // Once all components are initialized, display the main GUI window
@@ -340,7 +323,7 @@ public class SearchEngineGUI {
     String outputPath = "OUTPUT_PATH"; //TODO
 
 
-    private static void submitJob(JobType job, List<String> inputFiles, Object query) throws FileNotFoundException {
+    private static void submitJob(JobType job, List<String> inputFiles, Object query) throws FileNotFoundException, NoResultException {
 
         System.out.println("Submit Job called");
 
@@ -348,39 +331,50 @@ public class SearchEngineGUI {
         // TODO create a results directory in GCP bucket
 
 
+        //TODO make construct its own method since render results is doing the same thing as this func
+
         String hadoopCmd = null;
 
-        switch (job) {
-            case Construct:
-                logger.info("Constructing Inverted Indices with the following files:");
-                logger.info(inputFiles.toString());
-                hadoopCmd = "hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>";
-                // TODO call GCP
+            switch (job) {
+                case Construct:
+                    logger.info("Constructing Inverted Indices with the following files:");
+                    logger.info(inputFiles.toString());
+                    hadoopCmd = "hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>";
+                    // TODO call GCP
 
-                break;
-            case Search:
-                logger.info("Searching for the following term:" + query);
-                hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
-
-                // TODO call GCP
-
-                getJobResults(job, query);
-                break;
-            case TopN:
-                logger.info("Searching for the top " + query + " terms");
-                hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
-                // TODO call GCP
-                break;
-        }
+                    break;
+                case Search:
+                    logger.info("Searching for the following term:" + query);
+                    hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
+                    // TODO call GCP instead of this method call
+                    getJobResults(job, query);
+                    return;
+                case TopN:
+                    logger.info("Searching for the top " + query + " terms");
+                    hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
+                    getJobResults(job, query);
+                    // TODO call GCP
+                    break;
+            }
 
         System.out.println("Mock hadoop job call:");
         System.out.println(hadoopCmd);
 
-        parseInvertedIndices();
+        if (invertedIndices == null) {
+            System.out.println("invertedIndices == null, initializing now...");
+
+            try {
+                System.out.println("Calling worker");
+                invertedIndices = rp.doInBackground();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            System.out.println("worker done, invertedIndices have been parsed.");
+        }
 
     }
 
-    private static void getJobResults(JobType job, Object query) {
+    private static void getJobResults(JobType job, Object query) throws NoResultException {
 
         // TODO read results from the local docker container to get the rendering/parsing logic working
 
@@ -391,51 +385,90 @@ public class SearchEngineGUI {
         // TODO after returning to main menu / closing the program delete the results directory
 
         switch (job) {
-//            case Construct:
-//                logger.info("Constructing Inverted Indices with the following files:");
-//                logger.info(inputFiles.toString());
-//                // TODO call GCP
-//                break;
             case Search:
-                logger.info("Reading the InvertedIndices for the term:" + query);
-
+                query = query.toString();
+                System.out.println("Reading the InvertedIndices for the term:" + query);
                 if(invertedIndices.containsKey(query)){
-                    logger.info("Found the term! Results:");
-                    System.out.println(invertedIndices.get(query));
+                    System.out.println("Found the search term!");
+                    renderQueryResults(job, invertedIndices.get(query));
+                } else {
+                    System.out.println("Term not found!"); //TODO dis
+                    throw new NoResultException("The search term '" + query + "' was not found in any documents, and was not in the StopWord list.");
                 }
+                break;
+            case TopN:
+                query = (Integer) query;
+                logger.info("Reading the InvertedIndices for the top " + query + " terms");
+                break;
+        } // end switch
+
+    } // end getJobResults
+
+    /**
+     * Create and renders the JTable that displays the query results.
+     * @param job
+     * @param results
+     */
+    private static void renderQueryResults(JobType job, Object results){
+
+        switch (job) {
+            case Search:
+                IndexTerm term = (IndexTerm)results;
+                System.out.println("renderQueryResults (term): " + term);
+                searchTermTableData = new Object[term.getOccurrences().size()][4];
+                Iterator<IndexDocument> it = term.getOccurrences().stream().iterator();
+                IndexDocument doc;
+                int i = 0;
+                while(it.hasNext()){
+                    doc = it.next();
+                    searchTermTableData[i][0] = doc.getDocID();
+                    searchTermTableData[i][1] = doc.getDocDir();
+                    searchTermTableData[i][2] = doc.getDocName();
+                    searchTermTableData[i][3] = doc.getFrequency();
+                    i++;
+                }
+
+                termTableModel = new DefaultTableModel(searchTermTableData, searchColNames) {
+                    private static final long serialVersionUID = 1L;
+
+                    public boolean isCellEditable(int row, int column) {
+                        return false;//This causes all cells to be not editable
+                    }
+                };
+
+
+                searchResTable.setModel(termTableModel);
+                searchResTable.repaint();
 
                 break;
             case TopN:
-                logger.info("Reading the InvertedIndices for the top " + query + " terms");
                 break;
-        }
+        } // end switch
+
+    } // end renderQueryResults
 
 
-
-    }
-
-
-    private static void authExplicit(String jsonPath) throws IOException {
-        // TODO move these GCP objects to class attributes
-        // You can specify a credential file by providing a path to GoogleCredentials.
-        // Otherwise credentials are read from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-                .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
-        Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-
-        Bucket bucket = storage.get(BUCKET_NAME);
-
-        System.out.println(bucket.toString());
-
-        Blob blob = bucket.get("assets/");
-        System.out.println();
-
-//        System.out.println("Buckets:");
-//        Page<Bucket> buckets = storage.list();
-//        for (Bucket bucket : buckets.iterateAll()) {
-//            System.out.println(bucket.toString());
-//        }
-    }
+//    private static void authExplicit(String jsonPath) throws IOException {
+//        // TODO move these GCP objects to class attributes
+//        // You can specify a credential file by providing a path to GoogleCredentials.
+//        // Otherwise credentials are read from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+//        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
+//                .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
+//        Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+//
+//        Bucket bucket = storage.get(BUCKET_NAME);
+//
+//        System.out.println(bucket.toString());
+//
+//        Blob blob = bucket.get("assets/");
+//        System.out.println();
+//
+////        System.out.println("Buckets:");
+////        Page<Bucket> buckets = storage.list();
+////        for (Bucket bucket : buckets.iterateAll()) {
+////            System.out.println(bucket.toString());
+////        }
+//    }
 
 
     private static void setUp() throws Exception {
@@ -466,15 +499,8 @@ public class SearchEngineGUI {
 
         // TODO these need to be in their own method so that live data can be populated after the job finishes.
 
-        termTableModel = new DefaultTableModel(tmpData, searchColNames) {
-            private static final long serialVersionUID = 1L;
 
-            public boolean isCellEditable(int row, int column) {
-                return false;//This causes all cells to be not editable
-            }
-        };
-
-        topNTableModel = new DefaultTableModel(tmpData2, topNColNames) {
+        topNTableModel = new DefaultTableModel(topNTableData, topNColNames) {
             private static final long serialVersionUID = 1L;
 
             public boolean isCellEditable(int row, int column) {
@@ -499,51 +525,52 @@ public class SearchEngineGUI {
 
     }
 
-    private static void parseInvertedIndices() throws FileNotFoundException {
-
-        System.out.println("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
-        Scanner scan = new Scanner(new File(JOB_OUTPUT_PATH));
-
-        IndexTerm term;
-        IndexDocument doc;
-        String line, word, ID, dir, name = null, freq = null;
-        Pattern regex = Pattern.compile("\\{([^}]+)\\}");
-        Matcher match;
-        String[] pieces;
-
-
-        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
-        ArrayList<IndexDocument> docList;
-
-        while(scan.hasNextLine()){
-            line = scan.nextLine().replaceAll("'", "");
-            word = line.split(":", 2)[0];
-            match = regex.matcher(line.split(":", 2)[1]);
-            docList = new ArrayList<>();
-
-            while(match.find()){
-                pieces = match.group().replaceAll("\\{*\\}*", "").split("[,:]+");
-                ID = pieces[1];
-                dir = pieces[3];
-                name = pieces[5];
-                freq = pieces[7];
-                docList.add(new IndexDocument(name, dir, freq, ID));    // IndexDocument(String docName, String docDir, int frequency, int docID)
-            }
-
-            term = new IndexTerm(word);
-            term.addDocuments(docList);
-            pq.add(term);
-        }
-        System.out.println("Done constructing PQ, size: " + pq.size());
-
-        while (!pq.isEmpty()) {
-            term = pq.poll();
-            System.out.println(term.getTerm() + "(tot: " + term.getFrequency() + ") :" + term.getOccurrences().toString());
-            invertedIndices.put(term.getTerm(), term);
-        }
-
-        logger.info("Done parsing InvertedIndices results");
-    }
+//    private static void parseInvertedIndices() throws FileNotFoundException {
+//
+//        System.out.println("Beginning Parsing job result file: " + JOB_OUTPUT_PATH);
+//        Scanner scan = new Scanner(new File(JOB_OUTPUT_PATH));
+//
+//        IndexTerm term;
+//        IndexDocument doc;
+//        String line, word, ID, dir, name, freq, tmp;
+//        Pattern regex = Pattern.compile("\\{([^}]+)\\}");
+//        Matcher match;
+//        String[] pieces;
+//
+//
+//        PriorityQueue<IndexTerm> pq = new PriorityQueue<>();
+//        ArrayList<IndexDocument> docList;
+//
+//        while(scan.hasNextLine()){
+//            line = scan.nextLine().replaceAll("'", "");
+//            word = line.split(":", 2)[0];
+//            match = regex.matcher(line.split(":", 2)[1]);
+//            docList = new ArrayList<>();
+//
+//            while(match.find()){
+//                tmp = match.group().replaceAll("\\{*\\}*", "");
+//                pieces = tmp.split("[,:]+");
+//                ID = pieces[1];
+//                dir = pieces[3];
+//                name = pieces[5];
+//                freq = pieces[7];
+//                docList.add(new IndexDocument(name, dir, freq, ID));    // IndexDocument(String docName, String docDir, int frequency, int docID)
+//            }
+//
+//            term = new IndexTerm(word);
+//            term.addDocuments(docList);
+//            pq.add(term);
+//        }
+//        System.out.println("Done constructing PQ, size: " + pq.size());
+//
+//        while (!pq.isEmpty()) {
+//            term = pq.poll();
+//            System.out.println(term.getTerm() + "(tot: " + term.getFrequency() + ") :" + term.getOccurrences().toString());
+//            invertedIndices.put(term.getTerm(), term);
+//        }
+//
+//        logger.info("Done parsing InvertedIndices results");
+//    }
 
     private void resetText() {
         searchTime.setText("Your Search was Executed in <> ms");
@@ -551,7 +578,7 @@ public class SearchEngineGUI {
         topNSearch.setText("Top <> Frequent Terms:");
     }
 
-    private void showError(String msg) {
+    private static void showError(String msg) {
         JOptionPane optionPane = new JOptionPane(msg, JOptionPane.ERROR_MESSAGE);
         JDialog error = optionPane.createDialog("Input Error");
         error.setAlwaysOnTop(true);
@@ -595,9 +622,14 @@ public class SearchEngineGUI {
                 if (!selectedFiles.isEmpty()) {
                     try {
                         submitJob(JobType.Construct, selectedFiles, null);
-                    } catch (FileNotFoundException fileNotFoundException) {
-                        fileNotFoundException.printStackTrace();
+                    } catch (FileNotFoundException ex1) {
+                        ex1.printStackTrace();
+                    } catch (NoResultException ex2) {
+                        return;
+//                        showError("NoResultException Raised during invertedIndex construction? that shouldn't even be possible...?");
+//                        ex2.printStackTrace();
                     }
+
                     CardLayout cl = (CardLayout) (contentCards.getLayout());
                     cl.show(contentCards, MAIN_MENU);
                 }
@@ -626,7 +658,15 @@ public class SearchEngineGUI {
                     return;
                 }
 
-//                submitJob(JobType.Search, selectedFiles, term);
+                try {
+                    submitJob(JobType.Search, selectedFiles, term);
+                } catch (FileNotFoundException fileNotFoundException) {
+                    fileNotFoundException.printStackTrace();
+                }  catch (NoResultException ex2) {
+                    showError(ex2.getMessage());
+                    return;
+//                    ex2.printStackTrace();
+                }
 
                 logger.info("Showing Search Results for Term: " + term);
 

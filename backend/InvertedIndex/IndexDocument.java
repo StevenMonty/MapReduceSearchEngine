@@ -31,6 +31,18 @@ public class IndexDocument implements Comparable<IndexDocument>, Serializable {
         return this.frequency;
     }
 
+    public int getDocID() {
+        return docID;
+    }
+
+    public String getDocName() {
+        return docName;
+    }
+
+    public String getDocDir() {
+        return docDir;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
