@@ -7,6 +7,12 @@ import java.util.regex.Pattern;
 public class ResultParser extends SwingWorker<LinkedHashMap<String, IndexTerm>, Void> {
 
     LinkedHashMap<String, IndexTerm> hmap = new LinkedHashMap<>();
+    String results;
+
+
+    public ResultParser(String results){
+        this.results = results;
+    }
 
     @Override
     protected LinkedHashMap<String, IndexTerm> doInBackground() throws Exception {
@@ -30,7 +36,6 @@ public class ResultParser extends SwingWorker<LinkedHashMap<String, IndexTerm>, 
             String[] pieces;
 
             ArrayList<IndexDocument> docList;
-
 
             while (scan.hasNextLine()) {
                 line = scan.nextLine().replaceAll("'", "");

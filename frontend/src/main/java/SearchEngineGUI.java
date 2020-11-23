@@ -26,8 +26,8 @@ import java.util.stream.Stream;
 public class SearchEngineGUI {
     private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
 
-    private static ResultParser rp = new ResultParser();
-
+    private static ResultParser resParser;
+    private static JobExecutors.InvertedIndexExecutor jobExecutors;
 
     // Environment Var Setup
     private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
@@ -331,7 +331,7 @@ public class SearchEngineGUI {
     String outputPath = "OUTPUT_PATH"; //TODO
 
 
-    private static void submitJob(JobType job, List<String> inputFiles, Object query) throws FileNotFoundException, NoResultException {
+    private static void submitJob(JobType job, List<String> inputFiles, Object query) throws Exception {
 
         System.out.println("Submit Job called");
 
@@ -341,39 +341,39 @@ public class SearchEngineGUI {
 
         //TODO make construct its own method since render results is doing the same thing as this func
 
-        String hadoopCmd = null;
 
             switch (job) {
                 case Construct:
                     logger.info("Constructing Inverted Indices with the following files:");
                     logger.info(inputFiles.toString());
-                    hadoopCmd = "hadoop jar InvertedIndices.jar <INPUT:%s> <OUTPUT:%s>";
-                    // TODO call GCP
-
+                    jobExecutors = new JobExecutors.InvertedIndexExecutor(inputFiles);
+                    jobExecutors.doInBackground();
+                    JOptionPane waitMsg = showAlert("Please wait while the InvertedIndices are Constructed...");
+//                    waitMsg.setEnabled(false);
+//                    jobExecutors.wait();
+//                    waitMsg.setEnabled(true);
                     break;
                 case Search:
                     logger.info("Searching for the following term:" + query);
-                    hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
-                    // TODO call GCP instead of this method call
+//                    hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
                     getJobResults(job, query);
                     return;
                 case TopN:
                     logger.info("Searching for the top " + query + " terms");
-                    hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
+//                    hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
                     getJobResults(job, query);
-                    // TODO call GCP
                     break;
             }
 
         System.out.println("Mock hadoop job call:");
-        System.out.println(hadoopCmd);
+//        System.out.println(hadoopCmd);
 
         if (invertedIndices == null) {
             System.out.println("invertedIndices == null, initializing now...");
 
             try {
                 System.out.println("Calling worker");
-                invertedIndices = rp.doInBackground();
+                invertedIndices = resParser.doInBackground();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -480,33 +480,9 @@ public class SearchEngineGUI {
 
     } // end renderQueryResults
 
-
-//    private static void authExplicit(String jsonPath) throws IOException {
-//        // TODO move these GCP objects to class attributes
-//        // You can specify a credential file by providing a path to GoogleCredentials.
-//        // Otherwise credentials are read from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-//        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-//                .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
-//        Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-//
-//        Bucket bucket = storage.get(BUCKET_NAME);
-//
-//        System.out.println(bucket.toString());
-//
-//        Blob blob = bucket.get("assets/");
-//        System.out.println();
-//
-////        System.out.println("Buckets:");
-////        Page<Bucket> buckets = storage.list();
-////        for (Bucket bucket : buckets.iterateAll()) {
-////            System.out.println(bucket.toString());
-////        }
-//    }
-
-
     private static void setUp() throws Exception {
 
-        ASSET_PATH = System.getenv("ASSET_PATH");
+        ASSET_PATH = System.getenv("FILE_LIST_PATH");
         logger.info("Asset Path read from env: " + ASSET_PATH);
 
         GCP_AUTH_PATH = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -516,8 +492,6 @@ public class SearchEngineGUI {
         logger.info("GCP Storage Bucket name read from env: " + BUCKET_NAME);
 
         logger.info("Attempting to connect to Google Cloud Platform...");
-//        authExplicit(GCP_AUTH_PATH);  //TODO comment out to save GCP credits
-
 
         Scanner scan = new Scanner(new File(ASSET_PATH));
 
@@ -526,9 +500,6 @@ public class SearchEngineGUI {
 
         while(scan.hasNextLine())
             listModel.addElement(scan.nextLine());
-
-        // TODO these need to be in their own method so that live data can be populated after the job finishes.
-
     }
 
     private static void loadFiles(String assetPath, Map<String, Path> map) {
@@ -553,6 +524,7 @@ public class SearchEngineGUI {
         topNSearch.setText("Top <> Frequent Terms:");
     }
 
+
     private static void showError(String msg) {
         JOptionPane optionPane = new JOptionPane(msg, JOptionPane.ERROR_MESSAGE);
         JDialog error = optionPane.createDialog("Input Error");
@@ -560,6 +532,14 @@ public class SearchEngineGUI {
         error.setVisible(true);
     }
 
+    private static JOptionPane showAlert(String msg) {
+        JOptionPane optionPane = new JOptionPane(msg, JOptionPane.INFORMATION_MESSAGE);
+        JDialog error = optionPane.createDialog("Input Error");
+        error.setAlwaysOnTop(true);
+        error.setVisible(true);
+        optionPane.setEnabled(false);
+        return optionPane;
+    }
 
     private class ButtonListener implements ActionListener {  //Private inner class to keep all refs variables in scope
 
@@ -603,6 +583,10 @@ public class SearchEngineGUI {
                         return;
 //                        showError("NoResultException Raised during invertedIndex construction? that shouldn't even be possible...?");
 //                        ex2.printStackTrace();
+                    } catch (IOException ioException) {
+                        ioException.printStackTrace();
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
                     }
 
                     CardLayout cl = (CardLayout) (contentCards.getLayout());
@@ -641,6 +625,8 @@ public class SearchEngineGUI {
                     showError(ex2.getMessage());
                     return;
 //                    ex2.printStackTrace();
+                } catch (Exception ioException) {
+                    ioException.printStackTrace();
                 }
 
                 logger.info("Showing Search Results for Term: " + term);
