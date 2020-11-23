@@ -33,7 +33,7 @@ public class SearchEngineGUI {
     private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
     private static String GCP_AUTH_PATH;
     private static String BUCKET_NAME;
-    private static String JOB_OUTPUT_PATH = "/Users/StevenMontalbano/Programs/cs1660/FinalProject/part-r-00000";    //TODO set this somewhere
+//    private static String JOB_OUTPUT_PATH = "/Users/StevenMontalbano/Programs/cs1660/FinalProject/part-r-00000";    //TODO set this somewhere
     private static LinkedHashMap<String, IndexTerm> invertedIndices = null;    // TODO make sure this class is packaged
 
     // String names for each Card that is used to change which menu is being displayed

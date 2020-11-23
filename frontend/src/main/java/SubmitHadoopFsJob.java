@@ -40,16 +40,21 @@ public class SubmitHadoopFsJob {
     }
 
     public static void submitHadoopFsJob() throws IOException, InterruptedException {
-        // TODO(developer): Replace these variables before running the sample.
+        // TODO(developer): READ ENV VARS
+        String BUCKET_NAME = "cloud-comp-final-proj-data";
         String projectId = "cloud-comp-dhfs-cluster";
         String region = "us-central1";
         String clusterName = "cloud-comp-final-proj-cluster";
-        String hadoopFsQuery = "hadoop fs -getmerge /output/dir/on/hdfs/ /desired/local/output/file.txt";
+//        String hadoopFsQuery = String.format("distcp gs://%s/input /", BUCKET_NAME); //TODO not working, but maybe not needed?
+        String hadoopFsQuery = String.format("-cat /out/part* > gs://%s/output/indices.txt", BUCKET_NAME);
+
+//        String hadoopFsQuery = "hadoop jar InvertedIndex.jar $(BUCKET)/input /out"; //TODO set main jar from bucket
+
+        System.out.println(hadoopFsQuery);
         submitHadoopFsJob(projectId, region, clusterName, hadoopFsQuery);
     }
 
-    public static void submitHadoopFsJob(String projectId, String region, String clusterName, String hadoopFsQuery)
-            throws IOException, InterruptedException {
+    public static void submitHadoopFsJob(String projectId, String region, String clusterName, String hadoopFsQuery) throws IOException, InterruptedException {
         String myEndpoint = String.format("%s-dataproc.googleapis.com:443", region);
 
         // Configure the settings for the job controller client.

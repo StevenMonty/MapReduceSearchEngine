@@ -16,7 +16,7 @@ TODO Site all code sample sources here:
 Requirements:
     Docker: I have Docker Desktop for Mac Version 2.3.0.1(46911)
     Apache Maven 3.6.3
-    
+TODO MAKE SURE MY II JAR IS UPDATED IN MY BUCKET
 TODO make sure these paths are all correct from the command line
 TODO change dockerfile back to jre not jdk and test functionality
 1. `cd frontent`
