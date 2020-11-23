@@ -43,18 +43,12 @@ public class SearchEngineGUI {
     private static final String SEARCH_RESULT = "Show Search Term Results";
     private static final String TOP_N_MENU = "Let's User Calculate the Top N Frequent Terms";
     private static final String TOP_N_RESULT = "Show Top N Results";
-
-
     private static long startTime = 0L;
-
     private static List<String> selectedFiles;              // TODO clear this on each return to main screen
-
     private static DefaultListModel<String> listModel;      // Model to display the source file selection
     private static TableModel termTableModel;               // Search Term custom, immutable, TableModel instance
     private static TableModel topNTableModel;               // TopN custom, immutable, TableModel instance
-
     private final ButtonListener listener;                  // Custom ActionListener class to handle all button click events
-
     private final JFrame window;                            // Main window that displays all content
     private final JList<String> fileList;
 
@@ -68,7 +62,6 @@ public class SearchEngineGUI {
     private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
             backToSearch, nSearchEnter, backToNSearch;
 
-
     private final Set<String> stopWords = Stream.of(
             "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
             "she", "i", "with", "for", "it", "this", "by", "as", "was", "had", "not", "him", "be", "at", "on", "your"
@@ -79,9 +72,9 @@ public class SearchEngineGUI {
     private static final String[] searchColNames = {"Document ID", "Document Folder", "Document Name", "Occurrences"};
     private static final String[] topNColNames = {"Rank" , "Term", "Total Occurrences"};
 
-    private static Object[][] topNTableData = new Object[3][3];                // TODO don't make these literal instantiations
+    private static Object[][] topNTableData = new Object[3][3];
 
-    private static Object[][] searchTermTableData = new Object[4][4];                // TODO don't make these literal instantiations
+    private static Object[][] searchTermTableData = new Object[4][4];
 
 
     public SearchEngineGUI() {
@@ -254,7 +247,6 @@ public class SearchEngineGUI {
         searchResult.add(tableScrollPane);
 
         searchResTable = new JTable(searchTermTableData, searchColNames);
-//        searchResTable.setModel(termTableModel);
         tableScrollPane.setViewportView(searchResTable);
 
         // Top-N result view
@@ -290,7 +282,7 @@ public class SearchEngineGUI {
 
         window.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
-                System.out.println("Application Closed, Runing CleanUp()...");
+                System.out.println("Application Closed, Running CleanUp()...");
                 //TODO clean up GCP bucket input/output dirs
             }
         });
@@ -346,8 +338,11 @@ public class SearchEngineGUI {
                 case Construct:
                     logger.info("Constructing Inverted Indices with the following files:");
                     logger.info(inputFiles.toString());
+
                     jobExecutors = new JobExecutors.InvertedIndexExecutor(inputFiles);
                     jobExecutors.doInBackground();
+
+
                     JOptionPane waitMsg = showAlert("Please wait while the InvertedIndices are Constructed...");
 //                    waitMsg.setEnabled(false);
 //                    jobExecutors.wait();
@@ -580,9 +575,9 @@ public class SearchEngineGUI {
                     } catch (FileNotFoundException ex1) {
                         ex1.printStackTrace();
                     } catch (NoResultException ex2) {
+                        showError("NoResultException Raised during invertedIndex construction? that shouldn't even be possible...?");
+                        ex2.printStackTrace();
                         return;
-//                        showError("NoResultException Raised during invertedIndex construction? that shouldn't even be possible...?");
-//                        ex2.printStackTrace();
                     } catch (IOException ioException) {
                         ioException.printStackTrace();
                     } catch (Exception exception) {
@@ -702,14 +697,12 @@ public class SearchEngineGUI {
                 cl.show(contentCards, MAIN_MENU);
             }
 
-
             if (buttonRef == topNButton) {
                 logger.info("Showing Top N Menu");
 
                 CardLayout cl = (CardLayout) (contentCards.getLayout());
                 cl.show(contentCards, TOP_N_MENU);
             }
-
 
             if (buttonRef == nSearchEnter) {
 
@@ -750,20 +743,10 @@ public class SearchEngineGUI {
                 try {
                     getJobResults(JobType.TopN, N);
                 } catch (NoResultException noResultException) {
+
+                    // TODO some sort of error display?
                     noResultException.printStackTrace();
                 }
-
-
-                //TODO mocked job execution: call method to submit job to Hadoop
-//                try {
-//// 					searchStatus.setText("Connecting to Hadoop Cluster...\n");
-//// 					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
-//// 					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
-//                    Thread.sleep(1500);
-//                } catch (InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
-
 
                 topNSearchTime.setText(topNSearchTime.getText().replace("<>", Long.valueOf(System.currentTimeMillis() - startTime).toString()));
 

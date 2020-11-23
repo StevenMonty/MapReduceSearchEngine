@@ -6,15 +6,16 @@ TODO Site all code sample sources here:
 ### Grading Criteria Met
 
 - [x] Dockerized Search Engine GUI
-- [ ] Docker to Cluster Communication
-- [ ] MapReduce Inverted Index Implementation
-- [ ] Search Term and Top-N Search Implementation
+- [x] Docker to Cluster Communication
+- [x] MapReduce Inverted Index Implementation
+- [x] Search Term and Top-N Search Implementation
 
 ### Build Steps
 
 ##### SearchEngineGUI Container
 Requirements:
     Docker: I have Docker Desktop for Mac Version 2.3.0.1(46911)
+    Docker for Mac and Requires Socat and Xquarts to render a GUI application from within a Container
     Apache Maven 3.6.3
 TODO MAKE SURE MY II JAR IS UPDATED IN MY BUCKET
 TODO make sure these paths are all correct from the command line

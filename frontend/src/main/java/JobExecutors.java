@@ -45,8 +45,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * SwingWorker class to start the InvertedIndex job outside of the main
- * SwingEvent Thread to keep the GUI responsive.
+ * SwingWorker class to set up the directory structure and start the InvertedIndex job outside of
+ * the main Swing EventDispatchThread to keep the GUI responsive.
  */
 
 public class JobExecutors {
@@ -89,8 +89,6 @@ public class JobExecutors {
 
         @Override
         protected String doInBackground() throws Exception {
-
-            System.out.println(GCP_AUTH_PATH);
 
             try{
                 System.out.println("Moving selected input files to the BUCKET/input dir...");

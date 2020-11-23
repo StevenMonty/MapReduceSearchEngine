@@ -9,7 +9,6 @@ public class ResultParser extends SwingWorker<LinkedHashMap<String, IndexTerm>, 
     LinkedHashMap<String, IndexTerm> hmap = new LinkedHashMap<>();
     String results;
 
-
     public ResultParser(String results){
         this.results = results;
     }
