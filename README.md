@@ -3,7 +3,6 @@
 ### Video Links:
 [Box](https://pitt.box.com/s/fvgn6ao3nk6s4l7z3eta42bo2c2s3mbk)
 
-[OneDrive]()
 
 ### Grading Criteria Met
 - [x] Dockerized Search Engine GUI
