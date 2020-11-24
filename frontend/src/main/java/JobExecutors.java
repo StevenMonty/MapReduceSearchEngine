@@ -232,7 +232,7 @@ public class JobExecutors {
     /**
      * Moves the files the user selected from the /assets/ folder in the GCP storage bucket
      * into the /input directory to avoid reuploading the files from the local client on each
-     * operation.   TODO bucket data setup assumption
+     * operation.
      *
      * @param inputPaths
      * @return
@@ -272,6 +272,8 @@ public class JobExecutors {
 
         Iterator<Blob> iterator;
 
+
+        // Wait for the InvertedIndex job to finish before downloading results.
         do {
             System.out.println("Output dir is empty or contains intermediate results, checking again in 5 seconds");
             Thread.sleep(5000);

@@ -338,10 +338,6 @@ public class SearchEngineGUI {
 
         System.out.println("Submit Job called");
 
-        // TODO create new input dir in GCP bucket and move selected files into it
-        // TODO create a results directory in GCP bucket
-
-
         //TODO make construct its own method since render results is doing the same thing as this func
             switch (job) {
                 case Construct:
@@ -617,8 +613,6 @@ public class SearchEngineGUI {
                 searchTerm.setText(term);
 
                 // TODO not updating while main thread sleeps, use SwingUtilities.invokeLater() for the hadoop call
-
-                //TODO mocked job execution: call method to submit job to Hadoop
 
                 searchTime.setText(searchTime.getText().replace("<>", Long.valueOf(System.currentTimeMillis() - startTime).toString()));
 

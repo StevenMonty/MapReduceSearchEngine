@@ -24,7 +24,7 @@ My application relies on the following environment variables, which are already 
     * To find this address, you can run `ifconfig en0 | grep inet | awk '$1=="inet" {print $2}'` from the terminal and append port 0 to the end. 
 * FILE_LIST_PATH=frontend/src/main/resources/srcFiles.txt
     * Path to a hard-coded list of the input files used for input selection
-* GOOGLE_APPLICATION_CREDENTIALS=frontend/src/main/resources/credentials/cloud-comp-dhfs-cluster-2df39dc6c2fb.json
+* GOOGLE_APPLICATION_CREDENTIALS=frontend/src/main/resources/credentials/credentials.json
     * Path to the Google Authentication Credentials JSON file for a service account
 * PROJECT_ID=cloud-comp-dhfs-cluster
     * The GCP Project ID (and as I'm writing this I see the typo, but that can't be changed)
@@ -43,7 +43,7 @@ My application relies on the following environment variables, which are already 
     
 NOTE: 
 The SearchEngineGUI.jar by itself will not run from the command line since it is dependent on these environment variables, which 
-my IDE provided during development. The GUI will run from the docker image, since the vars are configured there. To get
+my IDE injects during development. The GUI will run from the docker image, since the vars are configured there. To get
 my application running on your own GCP clusters, change the ENV settings of the Dockerfile to point towards your cluster, 
 credentials path, etc. Also, the maven build copies my credentials into the JAR, so I have not uploaded that in this repo. 
 
@@ -65,14 +65,16 @@ To install Xquartz using homebrew, run `brew install xquartz`.
 3. In the Xquarts window that opens, naviagate to the Security tab and check `Allow Connections from Network Clients`. 
 4. Clone this repository: `git clone https://github.com/StevenMonty/MapReduceSearchEngine.git`
 5. Change directory into the cloned repo
-6. `cd frontent`
-7. `mvn install`
-8. `mvn package`
-9. `docker build --rm -t stevenmonty/gui .`
-10. `docker run -it --rm stevenmonty/gui:latest `
+6. Add your GCP Credentials JSON file to `frontend/src/main/resources/credentials` and make sure to update its path in the Dockerfile
+7. `cd frontent`
+8. `mvn install`
+9. `mvn package`
+10. `docker build --rm -t stevenmonty/gui .`
+11. `docker run -it --rm stevenmonty/gui:latest `
 
-##### InvertedIndex Jar
-
+### Notes:
+ All of my application logic leverages the InvertedIndex results. I use the results to perform both the TopN and 
+ SearchTerm operations. 
 
 
 ### Sources Referenced

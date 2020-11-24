@@ -1,4 +1,4 @@
-FROM openjre:8-jdk-alpine
+FROM openjdk:8-jre-alpine
 ENV LANG en_GB.UTF-8
 
 ENV DISPLAY=10.0.0.242:0
