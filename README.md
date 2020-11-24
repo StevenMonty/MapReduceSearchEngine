@@ -1,6 +1,4 @@
-#MapReduceFinalProject
-
-TODO email prof by November 23rd that I did proj individually and if I met all reqs
+# MapReduceFinalProject
 
 ### Grading Criteria Met
 - [x] Dockerized Search Engine GUI
@@ -44,10 +42,10 @@ My application relies on the following environment variables, which are already 
     * The path to the InvertedIndex job ouput dir on the bucket
     
 NOTE: 
-The jar by itself will not run from the command line since it is dependent on these environment variables, which 
-my IDE provided during development. The GUI will run from the docker image, since they are already configured. To get
+The SearchEngineGUI.jar by itself will not run from the command line since it is dependent on these environment variables, which 
+my IDE provided during development. The GUI will run from the docker image, since the vars are configured there. To get
 my application running on your own GCP clusters, change the ENV settings of the Dockerfile to point towards your cluster, 
-credentials path, etc. 
+credentials path, etc. Also, the maven build copies my credentials into the JAR, so I have not uploaded that in this repo. 
 
 #### Software Requirements
 Requirements:
