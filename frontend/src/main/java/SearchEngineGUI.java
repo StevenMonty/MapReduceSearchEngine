@@ -30,7 +30,7 @@ public class SearchEngineGUI {
     private static JobExecutors.InvertedIndexExecutor jobExecutors;
 
     // Environment Var Setup
-    private static String ASSET_PATH;   // TODO I may want to hard code these instead of reading each time
+    private static String FILE_LIST_PATH;   // TODO I may want to hard code these instead of reading each time
     private static String GCP_AUTH_PATH;
     private static String BUCKET_NAME;
 //    private static String JOB_OUTPUT_PATH = "/Users/StevenMontalbano/Programs/cs1660/FinalProject/part-r-00000";    //TODO set this somewhere
@@ -61,6 +61,7 @@ public class SearchEngineGUI {
 
     private final JButton backToMenu,  backToMenu2, loadButton, constructButton, searchButton, topNButton, searchEnter,
             backToSearch, nSearchEnter, backToNSearch;
+    private static JDialog loading;
 
     private final Set<String> stopWords = Stream.of(
             "the", "of", "and", "a", "to", "in", "is", "you", "that", "if", "but", "or", "my", "his", "her", "he",
@@ -100,6 +101,12 @@ public class SearchEngineGUI {
         loadPanel = new JPanel();
         contentCards.add(loadPanel, LOAD_SCREEN);
         loadPanel.setLayout(null);
+
+        loading = new JDialog();
+        loading.setLayout(null);
+        loading.setAlwaysOnTop(true);
+        loading.setLocationRelativeTo(null);
+        loading.setVisible(false);
 
         mainText = new JLabel("Load CS 1660 Search Engine");
         mainText.setHorizontalAlignment(SwingConstants.CENTER);
@@ -277,13 +284,20 @@ public class SearchEngineGUI {
         topNResults.add(nResScrollPane);
 
         topNTable = new JTable(topNTableData, topNColNames);
-//        topNTable.setModel(topNTableModel);
         nResScrollPane.setViewportView(topNTable);
 
         window.addWindowListener(new WindowAdapter() {
+            /**
+             * On WindowClosing event, delete the /input and /output directories in the
+             * Google Storage bucket.
+             *
+             * @param e
+             */
             public void windowClosing(WindowEvent e) {
-                System.out.println("Application Closed, Running CleanUp()...");
-                //TODO clean up GCP bucket input/output dirs
+                System.out.println("Main App Window Closed, Running CleanUp()...");
+                window.setVisible(false);
+                if (jobExecutors != null)
+                    jobExecutors.cleanUpBucket();
             }
         });
 
@@ -320,9 +334,6 @@ public class SearchEngineGUI {
         TopN
     }
 
-    String outputPath = "OUTPUT_PATH"; //TODO
-
-
     private static void submitJob(JobType job, List<String> inputFiles, Object query) throws Exception {
 
         System.out.println("Submit Job called");
@@ -332,61 +343,32 @@ public class SearchEngineGUI {
 
 
         //TODO make construct its own method since render results is doing the same thing as this func
-
-
             switch (job) {
                 case Construct:
                     logger.info("Constructing Inverted Indices with the following files:");
                     logger.info(inputFiles.toString());
+                    startTime = System.currentTimeMillis();
 
-                    jobExecutors = new JobExecutors.InvertedIndexExecutor(inputFiles);
-                    jobExecutors.doInBackground();
+                    jobExecutors.runJob();
+                    System.out.printf("Done constructing InvertedIndices, job completed in %s seconds\n", Long.valueOf((System.currentTimeMillis() - startTime)/100).toString());
 
+                    startTime = System.currentTimeMillis();
 
-                    JOptionPane waitMsg = showAlert("Please wait while the InvertedIndices are Constructed...");
-//                    waitMsg.setEnabled(false);
-//                    jobExecutors.wait();
-//                    waitMsg.setEnabled(true);
+                    invertedIndices = jobExecutors.parseResults();
+                    System.out.printf("Done parsing Hadoop Job results, completed in %s ms\n", Long.valueOf(System.currentTimeMillis() - startTime).toString());
                     break;
                 case Search:
                     logger.info("Searching for the following term:" + query);
-//                    hadoopCmd = String.format("hadoop jar SearchTerm.jar <INPUT> <OUTPUT>", query);
                     getJobResults(job, query);
                     return;
                 case TopN:
                     logger.info("Searching for the top " + query + " terms");
-//                    hadoopCmd = String.format("hadoop jar TopN.jar -D N=%s <INPUT> <OUTPUT>", query);
                     getJobResults(job, query);
                     break;
             }
-
-        System.out.println("Mock hadoop job call:");
-//        System.out.println(hadoopCmd);
-
-        if (invertedIndices == null) {
-            System.out.println("invertedIndices == null, initializing now...");
-
-            try {
-                System.out.println("Calling worker");
-                invertedIndices = resParser.doInBackground();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            System.out.println("worker done, invertedIndices have been parsed.");
-        }
-
     }
 
     private static void getJobResults(JobType job, Object query) throws NoResultException {
-
-        // TODO read results from the local docker container to get the rendering/parsing logic working
-
-        // TODO read GCP storage bucket @ OUTPUT_PATH
-        //  Check job type, construct the table model from the results and render it in the GUI
-
-
-        // TODO after returning to main menu / closing the program delete the results directory
-
         switch (job) {
             case Search:
                 query = query.toString();
@@ -395,7 +377,7 @@ public class SearchEngineGUI {
                     System.out.println("Found the search term!");
                     renderQueryResults(job, invertedIndices.get(query));
                 } else {
-                    System.out.println("Term not found!"); //TODO dis
+                    System.out.println("Term not found!"); //TODO display error?
                     throw new NoResultException("The search term '" + query + "' was not found in any documents, and was not in the StopWord list.");
                 }
                 break;
@@ -477,8 +459,8 @@ public class SearchEngineGUI {
 
     private static void setUp() throws Exception {
 
-        ASSET_PATH = System.getenv("FILE_LIST_PATH");
-        logger.info("Asset Path read from env: " + ASSET_PATH);
+        FILE_LIST_PATH = System.getenv("FILE_LIST_PATH");
+        logger.info("Asset Path read from env: " + FILE_LIST_PATH);
 
         GCP_AUTH_PATH = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
         logger.info("GCP Credential Path read from env: " + GCP_AUTH_PATH);
@@ -488,7 +470,7 @@ public class SearchEngineGUI {
 
         logger.info("Attempting to connect to Google Cloud Platform...");
 
-        Scanner scan = new Scanner(new File(ASSET_PATH));
+        Scanner scan = new Scanner(new File(FILE_LIST_PATH));
 
         // Set up the file selection JList Model to be immutable and allow multiple selections
         listModel = new DefaultListModel<String>();
@@ -527,13 +509,13 @@ public class SearchEngineGUI {
         error.setVisible(true);
     }
 
-    private static JOptionPane showAlert(String msg) {
+    private static JDialog showAlert(String msg) {
         JOptionPane optionPane = new JOptionPane(msg, JOptionPane.INFORMATION_MESSAGE);
         JDialog error = optionPane.createDialog("Input Error");
         error.setAlwaysOnTop(true);
-        error.setVisible(true);
-        optionPane.setEnabled(false);
-        return optionPane;
+        error.setVisible(false);
+        error.setEnabled(false);
+        return error;
     }
 
     private class ButtonListener implements ActionListener {  //Private inner class to keep all refs variables in scope
@@ -559,6 +541,11 @@ public class SearchEngineGUI {
                     return;
                 }
 
+                try {
+                    jobExecutors = new JobExecutors.InvertedIndexExecutor(selectedFiles);
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
+                }
                 logger.info(selectedFiles.toString());
 
                 selectionLabel.setVisible(true);
@@ -572,16 +559,12 @@ public class SearchEngineGUI {
                 if (!selectedFiles.isEmpty()) {
                     try {
                         submitJob(JobType.Construct, selectedFiles, null);
-                    } catch (FileNotFoundException ex1) {
-                        ex1.printStackTrace();
                     } catch (NoResultException ex2) {
                         showError("NoResultException Raised during invertedIndex construction? that shouldn't even be possible...?");
                         ex2.printStackTrace();
                         return;
-                    } catch (IOException ioException) {
-                        ioException.printStackTrace();
-                    } catch (Exception exception) {
-                        exception.printStackTrace();
+                    } catch (Exception ex1) {
+                        ex1.printStackTrace();
                     }
 
                     CardLayout cl = (CardLayout) (contentCards.getLayout());
@@ -613,13 +596,13 @@ public class SearchEngineGUI {
                 }
 
                 try {
+                    startTime = System.currentTimeMillis();
                     submitJob(JobType.Search, selectedFiles, term);
                 } catch (FileNotFoundException fileNotFoundException) {
                     fileNotFoundException.printStackTrace();
                 }  catch (NoResultException ex2) {
                     showError(ex2.getMessage());
                     return;
-//                    ex2.printStackTrace();
                 } catch (Exception ioException) {
                     ioException.printStackTrace();
                 }
@@ -630,25 +613,12 @@ public class SearchEngineGUI {
                 searchTermInput.setEnabled(false);
                 searchEnter.setEnabled(false);
 
-                //TODO show loading msg
-
 
                 searchTerm.setText(term);
-                startTime = System.currentTimeMillis();
 
                 // TODO not updating while main thread sleeps, use SwingUtilities.invokeLater() for the hadoop call
-//				searchStatus.setEnabled(true);
-//				searchStatus.setBackground(Color.BLUE);
 
                 //TODO mocked job execution: call method to submit job to Hadoop
-//                try {
-////					searchStatus.setText("Connecting to Hadoop Cluster...\n");
-////					searchStatus.setText(searchStatus.getText().concat("Submitting Search Job for Term" + searchInput.getText() + "\n"));
-////					searchStatus.setText(searchStatus.getText().concat("Job Finishing..."));
-//                    Thread.sleep(1500);
-//                } catch (InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
 
                 searchTime.setText(searchTime.getText().replace("<>", Long.valueOf(System.currentTimeMillis() - startTime).toString()));
 
@@ -729,9 +699,6 @@ public class SearchEngineGUI {
 
                 logger.info("Showing Results for Top N = " + N + " Terms");
 
-//                submitJob(JobType.TopN, selectedFiles, N);
-
-
                 topNSearch.setText(topNSearch.getText().replace("<>", String.valueOf(N)));
 
                 // Disable input while search job is executing
@@ -743,8 +710,6 @@ public class SearchEngineGUI {
                 try {
                     getJobResults(JobType.TopN, N);
                 } catch (NoResultException noResultException) {
-
-                    // TODO some sort of error display?
                     noResultException.printStackTrace();
                 }
 
