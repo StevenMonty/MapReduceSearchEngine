@@ -1,7 +1,8 @@
 # MapReduceFinalProject
 
 ### Video Links:
-
+[Box] (https://pitt.box.com/s/fvgn6ao3nk6s4l7z3eta42bo2c2s3mbk)
+[OneDrive]()
 
 ### Grading Criteria Met
 - [x] Dockerized Search Engine GUI
@@ -87,9 +88,15 @@ To install Xquartz using homebrew, run `brew install xquartz`.
 
 ### Sources Referenced
 [Most Common English Words](https://www.espressoenglish.net/the-100-most-common-words-in-english/) used to construct StopWord list
+
 [Secondary Sorting Algorithm](https://www.oreilly.com/library/view/data-algorithms/9781491906170/ch01.html)
+
 [Inverted Index Reference](http://www-scf.usc.edu/~shin630/Youngmin/files/HadoopInvertedIndexV5.pdf)
+
 [Using HDFS from the Java Client Library](https://github.com/googleapis/java-dataproc/blob/master/samples/snippets/src/main/java/SubmitHadoopFsJob.java)
+
 [Google Source Code for Submitting Hadoop Jobs](https://github.com/googleapis/java-dataproc/blob/master/samples/snippets/src/main/java/SubmitJob.java)
+
 [Merging the Hadoop Output Files inside of Java](https://github.com/marcusbeacon/Search-Engine/blob/master/SearchEngine/src/main/java/com/mkb90/app/SearchEngine.java)
+
 [Running Docker GUIs on Mac](https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc)
