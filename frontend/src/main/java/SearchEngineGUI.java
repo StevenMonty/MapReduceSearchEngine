@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 public class SearchEngineGUI {
     private static final Logger logger = Logger.getLogger(SearchEngineGUI.class.getName());
 
-    private static ResultParser resParser;
     private static JobExecutors.InvertedIndexExecutor jobExecutors;
 
     // Environment Var Setup

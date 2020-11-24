@@ -1,5 +1,8 @@
 # MapReduceFinalProject
 
+### Video Links:
+
+
 ### Grading Criteria Met
 - [x] Dockerized Search Engine GUI
 - [x] Docker to Cluster Communication
@@ -27,13 +30,18 @@ My application relies on the following environment variables, which are already 
 * GOOGLE_APPLICATION_CREDENTIALS=frontend/src/main/resources/credentials/credentials.json
     * Path to the Google Authentication Credentials JSON file for a service account
 * PROJECT_ID=cloud-comp-dhfs-cluster
-    * The GCP Project ID (and as I'm writing this I see the typo, but that can't be changed)
+    * The GCP Project ID (and as I'm writing this I see the typo, but that can't be changed now)
 * REGION=us-central1
     * The GCP Project Region
 * CLUSTER_NAME=cloud-comp-final-proj-cluster
     * The GCP cluster name
 * BUCKET_NAME=cloud-comp-final-proj-data
     * The GCP Storage Bucket Name
+    
+NOTE: The application is dependant on the /assets, /input, and /output directories in the following variables to make 
+sure that it does not read results from previous jobs. When editing these, only change the bucket name to ensure 
+the data goes in the proper place. 
+
 * BUCKET_ASSET_PATH=cloud-comp-final-proj-data/assets
     * The path to the 'assets' dir on the bucket, as seen in the Directory Structure section above
 * JOB_INPUT_DIR=cloud-comp-final-proj-data/input

@@ -19,13 +19,6 @@ import com.google.api.services.dataproc.DataprocScopes;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 
-//import com.google.cloud.dataproc.v1.HadoopJob;
-//import com.google.cloud.dataproc.v1.Job;
-//import com.google.cloud.dataproc.v1.JobControllerClient;
-//import com.google.cloud.dataproc.v1.JobControllerSettings;
-//import com.google.cloud.dataproc.v1.JobMetadata;
-//import com.google.cloud.dataproc.v1.JobPlacement;
-
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;

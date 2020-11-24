@@ -17,13 +17,11 @@ import java.util.stream.Stream;
 public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
 
     private FileSplit split;
-    private Integer docID;
     private Set<String> stopWords;
     private Pattern regex;
     private Matcher match;
     private Text path;
     private boolean DEBUG_MODE;
-
 
     @Override
     public void setup(Context context) throws IOException, InterruptedException {
@@ -39,11 +37,7 @@ public class InvertedIndexMapper extends Mapper<Object, Text, Text, Text> {
         split = (FileSplit)context.getInputSplit();
         // TODO print this path, it may contain the GCP bucket info
         //   path.name.split("input/")[1] ??
-//        docID = split.getPath().getName().hashCode();   // Generate document ID to be the hash of the file name
         path = new Text(split.getPath().toString().split("input/")[1]);
-
-
-//        System.out.println("Map Setup, path: " + path);
     }
 
     @Override
