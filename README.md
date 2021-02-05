@@ -1,10 +1,5 @@
 # MapReduceFinalProject
 
-### Video Links:
-[Box](https://pitt.box.com/s/fvgn6ao3nk6s4l7z3eta42bo2c2s3mbk)
-
-[OneDrive](https://pitt-my.sharepoint.com/:v:/g/personal/smm285_pitt_edu/ERiZN8AKLkZMkT6UgRJ2SS4BhvCI3-jNIlY4B0Jn03JJCg?e=1axJJZ)
-
 ### Grading Criteria Met
 - [x] Dockerized Search Engine GUI
 - [x] Docker to Cluster Communication
